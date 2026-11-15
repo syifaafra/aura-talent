@@ -35,6 +35,7 @@ export const metadata = { title: "Detail usulan · AURA Talent" };
 const DEFAULT_NOTES: Record<string, string> = {
   "000001": "Lanjutkan verifikasi. Perkuat perencanaan strategis.",
   "000002": "Perlu pengembangan kepemimpinan lintas unit.",
+  "000004": "Perlu pengalaman lintas fungsi sebagai pengembangan.",
 };
 
 function candidateInfo(p: Proposal, badge: string) {

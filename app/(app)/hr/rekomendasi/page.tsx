@@ -11,6 +11,7 @@ import {
   proposalForVacancy,
   repositoryEmployees,
 } from "@/lib/queries";
+import { MIN_CANDIDATES } from "@/lib/form";
 import { requireRole } from "@/lib/session";
 import { RecommendationTable, type RecRow } from "./recommendation-table";
 
@@ -122,6 +123,12 @@ async function RekomendasiPage({
             Lihat status persetujuan
           </Link>
           .
+        </Notice>
+      ) : null}
+      {rows.length < MIN_CANDIDATES ? (
+        <Notice tone="warn" title={`Rekomendasi hanya menghasilkan ${rows.length} kandidat`} className="mb-6">
+          Pencalonan membutuhkan minimal {MIN_CANDIDATES} kandidat. Lanjutkan ke formulir pencalonan dan tambahkan kandidat
+          lain dari Daftar Talenta sebelum mengirim usulan.
         </Notice>
       ) : null}
       <RecommendationTable rows={rows} vacancyId={chosen.id} lockedBy={locked} />

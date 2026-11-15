@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { isCategoryDeterminable, statusRows } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
-export const metadata = { title: "Dasbor Atasan · AURA Talent" };
+export const metadata = { title: "Dashboard Atasan · AURA Talent" };
 
 export default async function AtasanDasbor() {
   const { user } = await requireRole("atasan");
@@ -15,7 +15,7 @@ export default async function AtasanDasbor() {
   return (
     <>
       <PageHeader
-        title="Dasbor Atasan"
+        title="Dashboard Atasan"
         subtitle="Pantau kecocokan jabatan dan pencalonan bawahan langsung Anda."
       />
       <div className="mb-6 grid gap-6 md:grid-cols-3">

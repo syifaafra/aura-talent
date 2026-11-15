@@ -8,7 +8,6 @@ import {
   isCategoryDeterminable,
   matchesFor,
   proposalForVacancy,
-  repositoryEmployees,
 } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 import { ProposalForm, type PoolItem } from "./proposal-form";
@@ -105,7 +104,7 @@ async function PencalonanHr({
   }
 
   // Talent pool: everyone with complete mandatory data.
-  const pool: PoolItem[] = repositoryEmployees()
+  const pool: PoolItem[] = store.employees
     .filter(isCategoryDeterminable)
     .map((e) => {
       const nomination = store.nominations.find((n) => n.badge === e.badge && n.vacancyId === position.id);
@@ -116,20 +115,6 @@ async function PencalonanHr({
         source: nomination?.source ?? "Ditambahkan HR dari Daftar Talenta",
       };
     });
-  // Include non-repository staff who appear as recommendations (e.g. HR staff).
-  for (const r of store.recommendations[position.id] ?? []) {
-    const e = getEmployee(r.badge);
-    if (e && !pool.some((p) => p.badge === e.badge) && isCategoryDeterminable(e)) {
-      const n = store.nominations.find((x) => x.badge === e.badge && x.vacancyId === position.id);
-      pool.push({
-        badge: e.badge,
-        name: e.name,
-        category: matchesFor(e).find((m) => m.position.id === position.id)?.category ?? "Match",
-        source: n?.source ?? "Ditambahkan HR dari Daftar Talenta",
-      });
-    }
-  }
-
   const recommended = (store.recommendations[position.id] ?? []).map((r) => r.badge);
   const nominated = store.nominations.filter((n) => n.vacancyId === position.id).map((n) => n.badge);
   const fromParam = typeof sp.pilih === "string" ? sp.pilih.split(",") : [];

@@ -4,7 +4,7 @@ import { ROLE_LABEL, TODAY, fmtDate, fmtLong } from "@/lib/db";
 import { deadlineOf, isOverdue, queueFor, slaText } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
-export const metadata = { title: "Dasbor Approver · AURA Talent" };
+export const metadata = { title: "Dashboard Approver · AURA Talent" };
 
 export default async function ApproverDasbor() {
   const { role } = await requireRole("approver");
@@ -15,7 +15,7 @@ export default async function ApproverDasbor() {
 
   return (
     <>
-      <PageHeader title="Dasbor · Approver" subtitle={`Ruang keputusan ${ROLE_LABEL[role]} · ${fmtLong(TODAY)}`} />
+      <PageHeader title="Dashboard · Approver" subtitle={`Ruang keputusan ${ROLE_LABEL[role]} · ${fmtLong(TODAY)}`} />
 
       <div className="mb-6 grid gap-6 md:grid-cols-2">
         <Stat

@@ -17,7 +17,9 @@ import {
   type Stage,
 } from "./db";
 import {
+  MAX_CANDIDATES,
   MAX_FILE_BYTES,
+  MIN_CANDIDATES,
   MIN_JUSTIFICATION,
   type FormState,
   type ImportRow,
@@ -281,15 +283,21 @@ export async function submitProposal(_: FormState, fd: FormData): Promise<FormSt
     if (!e || !isCategoryDeterminable(e)) return { error: "Kandidat belum memenuhi syarat wajib." };
   }
   if (mode === "send") {
-    if (badges.length < 2)
-      return { error: "Minimal 2 kandidat dibutuhkan sebelum usulan dikirim ke VP SDM." };
+    if (badges.length < MIN_CANDIDATES || badges.length > MAX_CANDIDATES)
+      return {
+        error: `Pengajuan gagal: jumlah kandidat harus ${MIN_CANDIDATES}–${MAX_CANDIDATES} (saat ini ${badges.length}).`,
+      };
     if (note.length < MIN_JUSTIFICATION)
       return { error: `Keterangan minimal ${MIN_JUSTIFICATION} karakter.` };
   }
 
   const candidates = badges.map((badge) => {
     const nom = db().nominations.find((n) => n.badge === badge && n.vacancyId === vacancyId);
-    return { badge, source: nom?.source ?? ("HR (Daftar Talenta)" as const) };
+    const recommended = db().recommendations[vacancyId]?.some((r) => r.badge === badge);
+    return {
+      badge,
+      source: nom?.source ?? (recommended ? ("HR (Rekomendasi)" as const) : ("HR (Daftar Talenta)" as const)),
+    };
   });
 
   const proposal =

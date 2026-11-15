@@ -5,7 +5,7 @@ import { PREDICTION } from "@/lib/predictions";
 import { activeProposals, inApproval, isOverdue } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
-export const metadata = { title: "Dasbor HR · AURA Talent" };
+export const metadata = { title: "Dashboard HR · AURA Talent" };
 
 export default async function HrDasbor() {
   await requireRole("hr");
@@ -18,7 +18,7 @@ export default async function HrDasbor() {
 
   return (
     <>
-      <PageHeader title="Dasbor HR" subtitle="Pantau kesiapan pengisian jabatan dan tindak lanjut usulan promosi." />
+      <PageHeader title="Dashboard HR" subtitle="Pantau kesiapan pengisian jabatan dan tindak lanjut usulan promosi." />
 
       <div className="mb-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <Stat

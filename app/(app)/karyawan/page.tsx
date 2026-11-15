@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui";
 import { isCategoryDeterminable, matchesFor } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
-export const metadata = { title: "Dasbor · AURA Talent" };
+export const metadata = { title: "Dashboard · AURA Talent" };
 
 async function KaryawanDasbor({
   searchParams,
@@ -28,7 +28,7 @@ async function KaryawanDasbor({
 
   return (
     <>
-      <PageHeader title="Dasbor" subtitle={profileLine(e)} />
+      <PageHeader title="Dashboard" subtitle={profileLine(e)} />
       <SummaryCards e={e} />
       <MatchList
         rows={matchesFor(e)}
@@ -44,7 +44,7 @@ async function KaryawanDasbor({
 
 export default function Page(props: Parameters<typeof KaryawanDasbor>[0]) {
   return (
-    <Suspense fallback={<PageFallback title="Dasbor" />}>
+    <Suspense fallback={<PageFallback title="Dashboard" />}>
       <KaryawanDasbor {...props} />
     </Suspense>
   );

@@ -151,7 +151,7 @@ export interface PositionMatch {
 
 export interface Candidate {
   badge: string;
-  source: "Diri sendiri" | "Atasan Langsung" | "HR (Daftar Talenta)";
+  source: "Diri sendiri" | "Atasan Langsung" | "HR (Rekomendasi)" | "HR (Daftar Talenta)";
 }
 
 export interface LogEntry {
@@ -421,6 +421,19 @@ function createSeed(): Store {
       lhkpn: { uploaded: true, file: "lhkpn_hendra.pdf" },
     }),
     emp({
+      badge: "000009",
+      name: "Rizky Pratama",
+      position: "Staf Senior Produksi",
+      unit: "Produksi",
+      supervisor: "000007",
+      system: true,
+      grades: { 2024: "B", 2025: "B" },
+      kpi: { 2024: "Tercapai", 2025: "Tercapai" },
+      assessment: { ...okAssessment },
+      history: "2019–2022: Staf Produksi · 2022–sekarang: Staf Senior Produksi",
+      strengths: "Pengalaman produksi dan konsistensi capaian KPI",
+    }),
+    emp({
       badge: "000008",
       name: "Dewi Anggraini",
       position: "VP SDM",
@@ -516,6 +529,19 @@ function createSeed(): Store {
       relatedPosition: "Manajer Anggaran",
     },
     {
+      id: "P-MPG",
+      title: "Manajer Pengadaan",
+      label: "Jabatan K",
+      unit: "Logistik",
+      open: true,
+      openUntil: "2026-12-31",
+      vacancyCode: "DES-26-014",
+      competencies: ["Pengadaan strategis", "Negosiasi"],
+      keyStrength: "Pengalaman lintas fungsi mendukung proses pengadaan.",
+      developmentArea: "Manajemen rantai pasok",
+      relatedPosition: "Manajer Logistik",
+    },
+    {
       id: "P-MQ",
       title: "Manajer Mutu",
       label: "Jabatan G",
@@ -590,6 +616,7 @@ function createSeed(): Store {
       { positionId: "P-MK", category: "Match" },
       { positionId: "P-MQ", category: "Less Match" },
     ],
+    "000009": [{ positionId: "P-MP", category: "Match" }],
     "000006": [
       { positionId: "P-MSDM", category: "Match" },
       { positionId: "P-MK", category: "Match" },
@@ -654,6 +681,16 @@ function createSeed(): Store {
         indicators: { asesmen: 90, kinerja: 80, riwayat: 76, pendidikan: 82 },
       },
     ],
+    "P-MPG": [
+      {
+        badge: "000004",
+        score: 85,
+        reason: "Kinerja dan asesmen kuat",
+        gap: "manajemen rantai pasok",
+        change: "baru",
+        indicators: { asesmen: 86, kinerja: 87, riwayat: 80, pendidikan: 86 },
+      },
+    ],
     "P-MQ": [],
   };
 
@@ -690,9 +727,10 @@ function createSeed(): Store {
       "2026-12-01",
       [
         { badge: "000001", source: "Diri sendiri" },
-        { badge: "000002", source: "HR (Daftar Talenta)" },
+        { badge: "000002", source: "HR (Rekomendasi)" },
+        { badge: "000004", source: "HR (Rekomendasi)" },
       ],
-      [{ at: "2026-12-01T09:00", stage: "hr", action: "Usulan dikirim", note: "2 kandidat" }],
+      [{ at: "2026-12-01T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" }],
     ),
     mk(
       "U-2026-007",
@@ -702,10 +740,11 @@ function createSeed(): Store {
       "vp",
       "2026-12-03",
       [
-        { badge: "000002", source: "Atasan Langsung" },
-        { badge: "000004", source: "HR (Daftar Talenta)" },
+        { badge: "000002", source: "Diri sendiri" },
+        { badge: "000004", source: "HR (Rekomendasi)" },
+        { badge: "000006", source: "HR (Rekomendasi)" },
       ],
-      [{ at: "2026-12-03T09:00", stage: "hr", action: "Usulan dikirim", note: "2 kandidat" }],
+      [{ at: "2026-12-03T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" }],
     ),
     mk(
       "U-2026-008",
@@ -715,10 +754,11 @@ function createSeed(): Store {
       "vp",
       "2026-12-04",
       [
-        { badge: "000006", source: "HR (Daftar Talenta)" },
-        { badge: "000007", source: "Atasan Langsung" },
+        { badge: "000006", source: "Diri sendiri" },
+        { badge: "000007", source: "HR (Rekomendasi)" },
+        { badge: "000001", source: "HR (Rekomendasi)" },
       ],
-      [{ at: "2026-12-04T09:00", stage: "hr", action: "Usulan dikirim", note: "2 kandidat" }],
+      [{ at: "2026-12-04T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" }],
     ),
     mk(
       "U-2026-004",
@@ -740,6 +780,37 @@ function createSeed(): Store {
       [{ badge: "000005", source: "HR (Daftar Talenta)" }],
       [],
     ),
+    {
+      ...mk(
+        "U-2026-003",
+        "P-MOP",
+        "Manajer Operasi Produksi",
+        "2026-11-20",
+        "pihc",
+        "2026-12-03",
+        [
+          { badge: "000002", source: "Diri sendiri" },
+          { badge: "000004", source: "HR (Rekomendasi)" },
+          { badge: "000006", source: "HR (Rekomendasi)" },
+        ],
+        [
+          { at: "2026-11-20T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
+          { at: "2026-11-21T10:30", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-23T14:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-26T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Bhima Adiputra" },
+          { at: "2026-11-28T11:15", stage: "direksi2", action: "Disetujui", note: "Calon pilihan: Bhima Adiputra" },
+          { at: "2026-11-30T09:45", stage: "direksi3", action: "Disetujui", note: "Calon pilihan: Bhima Adiputra" },
+          { at: "2026-12-03T10:00", stage: "dirut", action: "Calon ditetapkan", note: "Bhima Adiputra" },
+        ],
+        [
+          { stage: "vp", badge: "000002", text: "Lanjutkan verifikasi. Perkuat kepemimpinan lintas unit." },
+          { stage: "svp", badge: "000004", text: "Perlu pengalaman lintas fungsi sebagai pengembangan." },
+          { stage: "direksi1", badge: "000002", text: "Direkomendasikan untuk promosi karena kompetensi teknis dan leadership sesuai kebutuhan jabatan." },
+        ],
+      ),
+      selectedBadge: "000002",
+      designatedBadge: "000002",
+    },
   ];
 
   const nominations: Nomination[] = [
@@ -753,12 +824,33 @@ function createSeed(): Store {
       by: "000001",
       at: "2026-11-20",
     },
+    {
+      id: "N-002",
+      badge: "000002",
+      vacancyId: "P-MOPR",
+      source: "Diri sendiri",
+      justification:
+        "Saya mengajukan pencalonan karena pengalaman operasional dan pendidikan yang relevan mendukung kesiapan saya memimpin operasi.",
+      by: "000002",
+      at: "2026-11-25",
+    },
+    {
+      id: "N-003",
+      badge: "000006",
+      vacancyId: "P-MSDM",
+      source: "Diri sendiri",
+      justification:
+        "Saya mengajukan pencalonan karena pengelolaan data SDM dan kinerja yang konsisten mendukung kebutuhan Manajer SDM.",
+      by: "000006",
+      at: "2026-11-26",
+    },
   ];
 
   const notifs: Notif[] = [
     { id: "n1", role: "vp", kind: "Pengingat persetujuan", title: "U-2026-006 · Manajer Produksi", body: "Batas keputusan VP terlewati 1 hari.", at: "2026-12-04T06:00", proposalId: "U-2026-006", read: false },
     { id: "n2", role: "vp", kind: "Usulan baru", title: "U-2026-007 · Manajer Operasi", body: "Menunggu persetujuan VP SDM.", at: "2026-12-03T09:00", proposalId: "U-2026-007", read: false },
     { id: "n3", role: "vp", kind: "Usulan baru", title: "U-2026-008 · Manajer SDM", body: "Menunggu persetujuan VP SDM.", at: "2026-12-04T09:00", proposalId: "U-2026-008", read: false },
+    { id: "n3b", role: "pihc", kind: "Usulan baru", title: "U-2026-003 · Manajer Operasi Produksi", body: "Calon ditetapkan: Bhima Adiputra. Menunggu persetujuan akhir PIHC.", at: "2026-12-03T10:00", proposalId: "U-2026-003", read: false },
     { id: "n4", role: "hr", kind: "Eskalasi SLA", title: "U-2026-006 · Manajer Produksi", body: "Persetujuan VP SDM melewati batas waktu 1 hari.", at: "2026-12-04T06:00", proposalId: "U-2026-006", read: false },
     { id: "n5", role: "hr", kind: "Pembaruan data", title: "Sinkronisasi PI Smart gagal", body: "Sistem menggunakan data terakhir yang tersimpan (31/10/2026).", at: "2026-11-01T01:00", read: false },
     { id: "n6", role: "hr", kind: "Usulan baru", title: "Pencalonan diri baru", body: "Budi Budiman mencalonkan diri untuk Manajer Produksi.", at: "2026-11-20T10:00", read: false },

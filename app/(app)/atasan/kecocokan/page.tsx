@@ -59,7 +59,6 @@ async function KecocokanBawahan({
                     >
                       <p className={cn("text-[1.3rem] font-semibold", active && "text-brand")}>
                         {s.name}
-                        {active ? " · Dipilih" : ""}
                       </p>
                       <p className="text-[1.05rem] text-muted">
                         {s.badge} · {s.unit}

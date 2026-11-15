@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { MIN_CANDIDATES } from "@/lib/form";
 import { Card, DisabledButton, Table, Th, buttonClass, cn } from "@/components/ui";
 
 export interface RecRow {
@@ -27,7 +28,7 @@ export function RecommendationTable({
   vacancyId: string;
   lockedBy?: string;
 }) {
-  const [picked, setPicked] = useState<string[]>(rows.slice(0, 2).map((r) => r.badge));
+  const [picked, setPicked] = useState<string[]>(rows.slice(0, 3).map((r) => r.badge));
   const [detail, setDetail] = useState(rows[0]?.badge);
   const active = rows.find((r) => r.badge === detail) ?? rows[0];
 
@@ -36,7 +37,13 @@ export function RecommendationTable({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-4">
+        {!lockedBy && picked.length > 0 && picked.length < MIN_CANDIDATES ? (
+          <p className="text-[1.05rem] text-warn">
+            Pencalonan minimal {MIN_CANDIDATES} kandidat. Tambahkan {MIN_CANDIDATES - picked.length} kandidat lagi dari
+            Daftar Talenta pada formulir pencalonan.
+          </p>
+        ) : null}
         {lockedBy ? (
           <DisabledButton>Usulan {lockedBy} sudah dikirim</DisabledButton>
         ) : picked.length === 0 ? (

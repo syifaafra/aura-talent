@@ -43,7 +43,7 @@ async function PersetujuanDetail({ params }: { params: Promise<{ id: string }> }
 
       {p.stage === "draft" ? (
         <Notice tone="warn" title="Draf usulan belum dikirim" className="mb-6">
-          Minimal 2 kandidat dibutuhkan sebelum usulan dikirim ke VP SDM.{" "}
+          Usulan harus memuat 2–5 kandidat sebelum dikirim ke VP SDM.{" "}
           <Link href={`/hr/pencalonan`} className="font-semibold underline">
             Buka formulir pencalonan
           </Link>
