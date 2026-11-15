@@ -40,10 +40,10 @@ function Brand() {
         <Image
           src="/brand/logo-header.png"
           alt="Pupuk Sriwidjaja Palembang"
-          width={239}
-          height={74}
+          width={504}
+          height={119}
           priority
-          className="h-[4.6rem] w-auto"
+          className="h-[3.9rem] w-auto max-w-full object-contain object-left"
         />
       </Link>
       <span className="text-[1.75rem] font-semibold text-white">AURA Talent</span>
