@@ -1,0 +1,51 @@
+import { Suspense } from "react";
+import { PageFallback } from "@/components/page-fallback";
+import { MatchList, parseTab } from "@/components/match-list";
+import { NoProfile, SummaryCards, UndeterminedView, profileLine } from "@/components/profile";
+import { PageHeader } from "@/components/ui";
+import { isCategoryDeterminable, matchesFor } from "@/lib/queries";
+import { requireRole } from "@/lib/session";
+
+export const metadata = { title: "Dasbor · AURA Talent" };
+
+async function KaryawanDasbor({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { employee: e } = await requireRole("karyawan");
+  const sp = await searchParams;
+  if (!e) return <NoProfile />;
+
+  if (!isCategoryDeterminable(e)) {
+    return (
+      <>
+        <PageHeader title="Kecocokan jabatan saya" subtitle={profileLine(e)} />
+        <UndeterminedView e={e} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageHeader title="Dasbor" subtitle={profileLine(e)} />
+      <SummaryCards e={e} />
+      <MatchList
+        rows={matchesFor(e)}
+        tab={parseTab(sp.tab)}
+        q={typeof sp.q === "string" ? sp.q : ""}
+        basePath="/karyawan"
+        unit={e.unit}
+        detailBase="/karyawan/kecocokan"
+      />
+    </>
+  );
+}
+
+export default function Page(props: Parameters<typeof KaryawanDasbor>[0]) {
+  return (
+    <Suspense fallback={<PageFallback title="Dasbor" />}>
+      <KaryawanDasbor {...props} />
+    </Suspense>
+  );
+}
