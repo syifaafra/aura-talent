@@ -1,119 +1,144 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { MIN_CANDIDATES } from "@/lib/form";
-import { Card, DisabledButton, Table, Th, buttonClass, cn } from "@/components/ui";
+import { MAX_CANDIDATES, MIN_CANDIDATES } from "@/lib/form";
+import { Card, Notice, Pill, Table, Th, buttonClass, cn } from "@/components/ui";
 
 export interface RecRow {
   badge: string;
   name: string;
+  position: string;
   score: number;
   category: string;
-  reason: string;
-  gap: string;
   change: "naik" | "turun" | "baru";
   changeBy?: number;
+  /** "Diajukan Karyawan" / "Diajukan Atasan" or empty. */
+  nominated: string;
   indicators: { asesmen: number; kinerja: number; riwayat: number; pendidikan: number };
   strengths: string;
-  development: string;
+  gap: string;
+  reqMet: number;
+  reqTotal: number;
+}
+
+const catTone = (c: string) => (c === "Match" ? "ok" : c === "Partial Match" ? "warn" : "danger");
+
+function changeText(r: RecRow) {
+  if (r.change === "baru") return "Baru masuk";
+  if (!r.changeBy) return "Tetap";
+  return `${r.change === "naik" ? "Naik" : "Turun"} ${r.changeBy}`;
+}
+
+export function VacancySelect({
+  value,
+  options,
+}: {
+  value: string;
+  options: Array<{ id: string; title: string }>;
+}) {
+  const router = useRouter();
+  return (
+    <select
+      aria-label="Jabatan"
+      value={value}
+      onChange={(e) => router.push(`/hr/rekomendasi?jabatan=${e.target.value}`)}
+      className="w-full min-w-[20rem] rounded-lg border border-brand bg-white px-4 py-3 text-[1.1rem] font-medium text-ink"
+    >
+      {options.map((o) => (
+        <option key={o.id} value={o.id}>
+          {o.title}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 export function RecommendationTable({
   rows,
   vacancyId,
   lockedBy,
+  versionDate,
 }: {
   rows: RecRow[];
   vacancyId: string;
   lockedBy?: string;
+  versionDate: string;
 }) {
-  const [picked, setPicked] = useState<string[]>(rows.slice(0, 3).map((r) => r.badge));
+  const router = useRouter();
+  const [picked, setPicked] = useState<string[]>([]);
   const [detail, setDetail] = useState(rows[0]?.badge);
+  const [message, setMessage] = useState("");
   const active = rows.find((r) => r.badge === detail) ?? rows[0];
 
-  const toggle = (b: string) =>
-    setPicked((p) => (p.includes(b) ? p.filter((x) => x !== b) : [...p, b]));
+  const toggle = (b: string) => setPicked((p) => (p.includes(b) ? p.filter((x) => x !== b) : [...p, b]));
+
+  const compose = () => {
+    if (picked.length < MIN_CANDIDATES)
+      return setMessage(`Pilih minimal ${MIN_CANDIDATES} kandidat. Saat ini ${picked.length} dipilih.`);
+    if (picked.length > MAX_CANDIDATES)
+      return setMessage(`Pilih paling banyak ${MAX_CANDIDATES} kandidat. Saat ini ${picked.length} dipilih.`);
+    router.push(`/hr/pencalonan?lowongan=${vacancyId}&pilih=${picked.join(",")}`);
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-4">
-        {!lockedBy && picked.length > 0 && picked.length < MIN_CANDIDATES ? (
-          <p className="text-[1.05rem] text-warn">
-            Pencalonan minimal {MIN_CANDIDATES} kandidat. Tambahkan {MIN_CANDIDATES - picked.length} kandidat lagi dari
-            Daftar Talenta pada formulir pencalonan.
-          </p>
-        ) : null}
-        {lockedBy ? (
-          <DisabledButton>Usulan {lockedBy} sudah dikirim</DisabledButton>
-        ) : picked.length === 0 ? (
-          <DisabledButton>Ajukan Pencalonan →</DisabledButton>
-        ) : (
-          <Link
-            href={`/hr/pencalonan?lowongan=${vacancyId}&pilih=${picked.join(",")}`}
-            className={buttonClass("primary")}
-          >
-            Ajukan Pencalonan → ({picked.length})
+      {lockedBy ? (
+        <Notice title={`Usulan ${lockedBy} sudah dikirim`}>
+          <Link href={`/hr/persetujuan/${lockedBy}`} className="font-semibold underline">
+            Lihat status persetujuan
           </Link>
-        )}
-      </div>
+        </Notice>
+      ) : null}
 
       <Card className="p-2">
         <Table>
           <thead>
             <tr>
-              <Th>Peringkat</Th>
+              {lockedBy ? null : <Th>Pilih</Th>}
+              <Th>#</Th>
               <Th>Kandidat</Th>
-              <Th>Readiness</Th>
-              <Th>Syarat wajib</Th>
-              <Th>Alasan / gap terbesar</Th>
+              <Th>Readiness score</Th>
               <Th>Perubahan peringkat</Th>
-              <Th>
-                <span className="sr-only">Pilih</span>
-              </Th>
+              <Th>Status pencalonan</Th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => {
-              const on = picked.includes(r.badge);
+              const on = detail === r.badge;
               return (
-                <tr key={r.badge} className={cn(on && "bg-[#cfdceb]/70")}>
-                  <td className="px-4 py-4 text-center align-middle text-[1.2rem]">{i + 1}</td>
+                <tr
+                  key={r.badge}
+                  onClick={() => setDetail(r.badge)}
+                  className={cn("cursor-pointer", on ? "bg-brand-soft shadow-[inset_4px_0_0_var(--color-brand)]" : "bg-white")}
+                >
+                  {lockedBy ? null : (
+                    <td className="px-4 py-4 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(r.badge)}
+                        onChange={() => {
+                          toggle(r.badge);
+                          setMessage("");
+                        }}
+                        aria-label={`Pilih ${r.name} untuk usulan`}
+                        className="h-5 w-5 accent-brand"
+                      />
+                    </td>
+                  )}
+                  <td className="px-4 py-4 align-middle text-[1.2rem]">{i + 1}</td>
                   <td className="px-4 py-4 align-middle">
-                    <button
-                      type="button"
-                      onClick={() => setDetail(r.badge)}
-                      aria-pressed={detail === r.badge}
-                      className="text-left text-[1.2rem] hover:text-brand hover:underline"
-                    >
-                      {r.name}
-                    </button>
+                    <p className="text-[1.2rem] font-semibold">{r.name}</p>
+                    <p className="text-base text-muted">{r.position}</p>
                   </td>
-                  <td className="px-4 py-4 align-middle text-[1.2rem] font-semibold text-brand">{r.score} / 100</td>
-                  <td className="px-4 py-4 align-middle text-[1.15rem] text-ok">Memenuhi</td>
-                  <td className="px-4 py-4 align-middle text-[1.1rem]">
-                    {r.reason};
-                    <br />
-                    gap: {r.gap}
+                  <td className="px-4 py-4 align-middle">
+                    <span className="mr-2 text-[1.2rem] font-semibold text-brand">{r.score} / 100</span>
+                    <Pill tone={catTone(r.category)}>{r.category}</Pill>
                   </td>
-                  <td className="px-4 py-4 text-center align-middle text-[1.15rem]">
-                    {r.change === "naik" ? (
-                      <span className="text-ok">↑ {r.changeBy}</span>
-                    ) : r.change === "turun" ? (
-                      <span className="text-danger">↓ {r.changeBy}</span>
-                    ) : (
-                      <span className="text-warn">Baru masuk</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-center align-middle">
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={Boolean(lockedBy)}
-                      onChange={() => toggle(r.badge)}
-                      aria-label={`Pilih ${r.name} untuk diajukan`}
-                      className="h-5 w-5 accent-brand"
-                    />
+                  <td className="px-4 py-4 align-middle text-[1.1rem]">{changeText(r)}</td>
+                  <td className="px-4 py-4 align-middle">
+                    {r.nominated ? <Pill tone="brand">{r.nominated}</Pill> : <span className="text-muted">—</span>}
                   </td>
                 </tr>
               );
@@ -121,21 +146,72 @@ export function RecommendationTable({
           </tbody>
         </Table>
       </Card>
+      <p className="text-base text-muted">
+        Semua kandidat sudah memenuhi syarat wajib. Perubahan peringkat dibandingkan versi sebelumnya ({versionDate}).
+        Klik baris untuk melihat rincian.
+      </p>
 
       {active ? (
         <Card>
-          <h2 className="text-[1.6rem] font-semibold">Rincian indikator · {active.name}</h2>
-          <p className="mt-3 text-[1.2rem] font-medium text-brand">
-            Asesmen {active.indicators.asesmen} · Kinerja {active.indicators.kinerja} · Riwayat jabatan{" "}
-            {active.indicators.riwayat} · Pendidikan {active.indicators.pendidikan}
-          </p>
-          <p className="mt-4 text-[1.15rem] leading-relaxed text-muted">
-            Kekuatan: {active.strengths}.
-            <br />
-            Development area: {active.development}.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[1.5rem] font-semibold">Rincian · {active.name}</h2>
+              <p className="text-[1.05rem] text-muted">
+                {active.position} · NIK {active.badge} · Peringkat {rows.indexOf(active) + 1}
+              </p>
+            </div>
+            <Link href={`/hr/repository/${active.badge}`} className="font-semibold text-brand hover:underline">
+              Lihat profil lengkap →
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-8 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-3 text-[1.15rem] font-semibold">Indikator readiness score (0–100)</h3>
+              {(
+                [
+                  ["Asesmen", active.indicators.asesmen],
+                  ["Kinerja", active.indicators.kinerja],
+                  ["Riwayat jabatan", active.indicators.riwayat],
+                  ["Pendidikan", active.indicators.pendidikan],
+                ] as const
+              ).map(([label, v]) => (
+                <div key={label} className="mb-2 grid grid-cols-[9rem_1fr_3rem] items-center gap-3 text-[1.05rem]">
+                  <span>{label}</span>
+                  <span className="h-3 overflow-hidden rounded-full bg-canvas">
+                    <span className="block h-full rounded-full bg-brand" style={{ width: `${v}%` }} />
+                  </span>
+                  <span className="text-right font-semibold">{v}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-3 text-[1.1rem]">
+              <p>
+                <span className="font-semibold text-ok">Kekuatan:</span> {active.strengths}
+              </p>
+              <p>
+                <span className="font-semibold text-warn">Gap terbesar:</span> {active.gap}
+              </p>
+              <p>
+                <span className="font-semibold">Syarat wajib:</span> {active.reqMet} dari {active.reqTotal} terpenuhi
+              </p>
+            </div>
+          </div>
         </Card>
       ) : null}
+
+      {lockedBy ? null : (
+        <div className="space-y-3">
+          {message ? <Notice tone="warn">{message}</Notice> : null}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-[1.1rem] text-muted">
+              {picked.length} kandidat dipilih · usulan memuat {MIN_CANDIDATES}–{MAX_CANDIDATES} kandidat
+            </p>
+            <button type="button" onClick={compose} className={buttonClass("primary")}>
+              Susun usulan ({picked.length}) →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

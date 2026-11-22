@@ -32,7 +32,7 @@ async function AntreanPage({
   return (
     <>
       <PageHeader
-        title={forPick ? "Usulan menunggu pemilihan" : "Usulan menunggu keputusan"}
+        title={forPick ? "Usulan menunggu pemilihan" : role === "pihc" ? "Usulan menunggu keputusan" : "Usulan menunggu catatan"}
         subtitle={
           forPick
             ? `Antrean ${ROLE_LABEL[role]} · Pilih usulan untuk membandingkan kandidat yang telah diverifikasi.`

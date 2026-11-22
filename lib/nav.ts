@@ -27,7 +27,7 @@ export const NAV: Record<RoleGroup, NavItem[]> = {
     { label: "Repository", href: "/hr/repository" },
     { label: "Prediksi jabatan", href: "/hr/prediksi" },
     { label: "Rekomendasi kandidat", href: "/hr/rekomendasi" },
-    { label: "Pencalonan", href: "/hr/pencalonan" },
+    { label: "Susun usulan", href: "/hr/pencalonan" },
     { label: "Status persetujuan", href: "/hr/persetujuan" },
     { label: "Jadwal wawancara", href: "/hr/wawancara" },
     { label: "Unggah Nilai Akhir", href: "/hr/unggah" },

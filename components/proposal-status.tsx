@@ -8,6 +8,8 @@ import {
 } from "@/lib/db";
 import { cn } from "./ui";
 
+const NOTE_STAGES: Stage[] = ["vp", "svp", "direksi1", "direksi2", "direksi3"];
+
 type StepState = "done" | "current" | "next";
 
 export function stepState(p: Proposal, stage: Stage): StepState {
@@ -19,8 +21,8 @@ export function stepState(p: Proposal, stage: Stage): StepState {
 }
 
 const STATE_TEXT: Record<StepState, string> = {
-  done: "Sudah disetujui",
-  current: "Menunggu persetujuan",
+  done: "Selesai diproses",
+  current: "Sedang diproses",
   next: "Belum dimulai",
 };
 
@@ -28,6 +30,7 @@ const STATE_TEXT: Record<StepState, string> = {
 export function CompactSteps({ proposal }: { proposal: Proposal }) {
   const idx = APPROVAL_STAGES.indexOf(proposal.stage);
   const finished = proposal.stage === "selesai" || proposal.stage === "ditolak";
+  // Read-only timeline of the stages only: no Approver notes and no result.
   const visible = finished ? APPROVAL_STAGES : APPROVAL_STAGES.slice(0, Math.max(idx, 0) + 1);
   const rest = finished ? [] : APPROVAL_STAGES.slice(idx + 1);
   return (
@@ -39,8 +42,7 @@ export function CompactSteps({ proposal }: { proposal: Proposal }) {
         </li>
         {visible.map((s) => {
           const st = stepState(proposal, s);
-          // Karyawan and Atasan never see the final result, only that the stage was processed.
-          const text = finished && s === "pihc" ? "Selesai diproses" : STATE_TEXT[st];
+          const text = STATE_TEXT[st];
           return (
             <li
               key={s}
@@ -108,7 +110,7 @@ export function Timeline({ proposal }: { proposal: Proposal }) {
               >
                 {s.key === "hr" || s.st === "next"
                   ? s.label
-                  : `${s.label} · ${s.key === "pihc" && proposal.stage === "ditolak" ? "Ditolak" : s.st === "done" ? "Disetujui" : "Menunggu"}`}
+                  : `${s.label} · ${s.key === "pihc" && proposal.stage === "ditolak" ? "Ditolak" : s.st === "done" ? (NOTE_STAGES.includes(s.key as Stage) ? "Catatan diberikan" : "Disetujui") : "Menunggu"}`}
               </p>
               <p className="text-base text-muted">{detail}</p>
             </div>

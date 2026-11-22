@@ -6,20 +6,19 @@ import type { ReactNode } from "react";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, CardTitle, Notice, PageHeader, buttonClass, DisabledButton } from "@/components/ui";
 import {
-  approveForward,
   designateCandidate,
   finalApprove,
   requestInterview,
 } from "@/lib/actions";
 import {
   STAGE_LABEL,
-  db,
   fmtDate,
   type Proposal,
   type Stage,
 } from "@/lib/db";
 import {
   categoryFor,
+  checklist,
   documentsComplete,
   getEmployee,
   getProposal,
@@ -27,15 +26,11 @@ import {
   recommendationFor,
 } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
-import { CandidatePicker, type PickerCandidate } from "./candidate-picker";
+import { candidateViews } from "@/lib/candidate-view";
+import { CandidatePicker } from "./candidate-picker";
+import { ReviewForm } from "./review-form";
 
-export const metadata = { title: "Detail usulan · AURA Talent" };
-
-const DEFAULT_NOTES: Record<string, string> = {
-  "000001": "Lanjutkan verifikasi. Perkuat perencanaan strategis.",
-  "000002": "Perlu pengembangan kepemimpinan lintas unit.",
-  "000004": "Perlu pengalaman lintas fungsi sebagai pengembangan.",
-};
+export const metadata = { title: "Detail usulan dan catatan · AURA Talent" };
 
 function candidateInfo(p: Proposal, badge: string) {
   const e = getEmployee(badge)!;
@@ -78,7 +73,7 @@ function CandidateRow({
 function Header({ p, role }: { p: Proposal; role: string }) {
   return (
     <PageHeader
-      title={role === "dirut" ? "Penetapan calon promosi" : role === "pihc" ? "Persetujuan akhir PIHC" : "Detail usulan dan persetujuan"}
+      title={role === "dirut" ? "Penetapan calon promosi" : role === "pihc" ? "Persetujuan akhir PIHC" : "Detail usulan dan catatan"}
       subtitle={`${p.id} · ${p.title} · Pengusul HR · ${p.candidates.length} kandidat`}
       back={
         <Link href="/approver/antrean" className="hover:underline">
@@ -139,46 +134,7 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
     return (
       <>
         <Header p={p} role={role} />
-        <Notice className="mb-6">Seluruh kandidat diteruskan ke tahap berikutnya. Catatan tidak membatalkan persetujuan.</Notice>
-        <ActionForm action={approveForward}>
-          {hidden}
-          <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-[1.6rem] font-semibold">Kandidat yang diajukan</h2>
-            <span className="text-[1.05rem] text-muted">{p.candidates.length} kandidat · Syarat wajib memenuhi</span>
-          </div>
-          <div className="space-y-4">
-            {p.candidates.map((c) => {
-              const { notes, rec } = candidateInfo(p, c.badge);
-              const earlier = notes.filter((n) => n.stage !== role);
-              const own = notes.find((n) => n.stage === role)?.text;
-              return (
-                <CandidateRow key={c.badge} p={p} badge={c.badge}>
-                  {earlier.map((n) => (
-                    <p key={n.label} className="mb-2 rounded-md bg-brand-soft px-3 py-2 text-base">
-                      <span className="font-semibold text-brand">{n.label}:</span> {n.text}
-                    </p>
-                  ))}
-                  <label htmlFor={`note-${c.badge}`} className="block text-base font-medium text-muted">
-                    Catatan kandidat
-                  </label>
-                  <textarea
-                    id={`note-${c.badge}`}
-                    name={`note-${c.badge}`}
-                    rows={2}
-                    defaultValue={own ?? DEFAULT_NOTES[c.badge] ?? (rec ? `Perlu pengembangan ${rec.gap}.` : "")}
-                    className="mt-1 w-full rounded-lg border border-line px-4 py-2.5 text-[1.1rem] focus:border-brand"
-                  />
-                </CandidateRow>
-              );
-            })}
-          </div>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-            <Link href="/approver/antrean" className="font-semibold text-brand hover:underline">
-              Kembali ke daftar usulan
-            </Link>
-            <SubmitButton pendingText="Menyimpan…">Setujui</SubmitButton>
-          </div>
-        </ActionForm>
+        <ReviewForm proposalId={p.id} candidates={candidateViews(p, role)} />
       </>
     );
   }
@@ -192,26 +148,8 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
       </Notice>
     ) : null;
 
-    // Step 1: compare the candidates side by side and choose one.
+    // Choose exactly one candidate; "Tetapkan pilihan" designates it and forwards the proposal to PIHC.
     if (!p.selectedBadge) {
-      const interview = db().interviews.find((i) => i.proposalId === p.id);
-      const candidates: PickerCandidate[] = p.candidates.map((c) => {
-        const { e, rec, notes } = candidateInfo(p, c.badge);
-        const slot = interview?.slots.find((s) => s.badge === c.badge);
-        return {
-          badge: e.badge,
-          name: e.name,
-          position: e.position,
-          score: rec?.score,
-          category: categoryFor(p.vacancyId, c.badge),
-          kpi: "KPI 2024 & 2025: Tercapai",
-          assessment: `Asesmen: ${e.assessment?.result ?? "-"}`,
-          track: e.strengths || rec?.reason || "-",
-          development: rec?.gap ? rec.gap.charAt(0).toUpperCase() + rec.gap.slice(1) : "-",
-          interview: slot ? `Dijadwalkan ${interview!.date} ${slot.start} WIB` : "Belum dijadwalkan",
-          notes: notes.map((n) => ({ label: n.label, text: n.text })),
-        };
-      });
       return (
         <>
           <PageHeader
@@ -219,7 +157,7 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
             subtitle={`${p.id} · ${p.title} · ${p.candidates.length} kandidat`}
             back={
               <Link href="/approver/antrean" className="hover:underline">
-                Daftar usulan / Perbandingan kandidat
+                ← Daftar usulan
               </Link>
             }
             action={
@@ -234,7 +172,7 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
             }
           />
           {heldNotice}
-          <CandidatePicker proposalId={p.id} candidates={candidates} disabled={p.held} />
+          <CandidatePicker proposalId={p.id} candidates={candidateViews(p, "dirut")} held={p.held} />
         </>
       );
     }
@@ -281,7 +219,7 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
                 return (
                   <li key={s}>
                     <p className={`text-[1.3rem] font-semibold ${l ? "text-ok" : "text-muted"}`}>
-                      {STAGE_LABEL[s]} · {l ? "Disetujui" : "Menunggu"}
+                      {STAGE_LABEL[s]} · {l ? "Catatan diberikan" : "Menunggu"}
                     </p>
                     <p className="text-[1.1rem] text-muted">{note ? note.text : (l?.note ?? "")}</p>
                   </li>
@@ -325,11 +263,12 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
   if (!designated) notFound();
   const complete = documentsComplete(designated);
   const pending = pendingDocuments(designated);
+  const items = checklist(designated);
   return (
     <>
       <PageHeader
         title="Persetujuan akhir PIHC"
-        subtitle={`${p.id} · ${p.title} · Calon ditetapkan: ${designated.name} · Menunggu PIHC`}
+        subtitle={`${p.id} · ${p.title} · Calon ditetapkan: ${designated.name}`}
         back={
           <Link href="/approver/antrean" className="hover:underline">
             ← Daftar usulan
@@ -341,46 +280,30 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
           ? "Wawancara, kesehatan, dan LHKPN sudah lengkap. Persetujuan akhir dapat diberikan."
           : `Menunggu kelengkapan ${pending.join(", ").toLowerCase().replace("lhkpn", "LHKPN")} sebelum persetujuan akhir.`}
       </Notice>
-      <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-[1.6rem] font-semibold">Calon terpilih &amp; kandidat pembanding</h2>
-        <span className="text-[1.05rem] text-muted">Calon ditetapkan: {designated.name}</span>
-      </div>
-      <div className="space-y-4">
-        {p.candidates.map((c) => {
-          const { notes } = candidateInfo(p, c.badge);
-          return (
-            <CandidateRow key={c.badge} p={p} badge={c.badge} badgeText={c.badge === designated.badge ? "Calon terpilih" : undefined}>
-              <p className="text-base font-medium text-muted">Catatan kandidat</p>
-              {notes.length === 0 ? (
-                <p className="mt-1 text-[1.1rem] text-muted">
-                  {c.badge === designated.badge && !complete ? "Lengkapi dokumen sebelum persetujuan akhir." : "Belum ada catatan."}
-                </p>
-              ) : (
-                notes.map((n) => (
-                  <p key={n.label} className="mt-1 text-[1.1rem]">
-                    <span className="font-semibold text-brand">{n.label}:</span> {n.text}
-                  </p>
-                ))
-              )}
-            </CandidateRow>
-          );
-        })}
-      </div>
+      <Card>
+        <CardTitle>
+          Syarat promosi (PI-SDM-PD-013) · {designated.name}
+        </CardTitle>
+        <p className="mb-3 text-[1.1rem] text-muted">
+          {designated.position} · NIK {designated.badge}. Periksa pemenuhan setiap syarat, lalu setujui atau tolak.
+          PIHC tidak mengisi catatan.
+        </p>
+        <ul className="divide-y divide-line">
+          {items.map((i) => (
+            <li key={i.key} className="flex items-start gap-3 py-3">
+              <span className={`mt-0.5 text-[1.2rem] font-bold ${i.state === "Memenuhi" ? "text-ok" : "text-warn"}`}>
+                {i.state === "Memenuhi" ? "✓" : "!"}
+              </span>
+              <div>
+                <p className="text-[1.2rem] font-semibold">{i.label}</p>
+                <p className="text-base text-muted">{i.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
       <ActionForm action={finalApprove} className="mt-6">
         {hidden}
-        <p className="mb-3 text-[1.1rem] text-muted">
-          PIHC memeriksa pemenuhan persyaratan promosi sesuai PI-SDM-PD-013 untuk calon yang ditetapkan. Bila tidak
-          terpenuhi, tolak dan isi alasannya.
-        </p>
-        <label htmlFor="reason" className="mb-1.5 block text-base font-semibold text-muted">
-          Alasan penolakan (wajib bila menolak)
-        </label>
-        <textarea
-          id="reason"
-          name="reason"
-          rows={3}
-          className="mb-4 w-full resize-y rounded-lg border border-line px-4 py-3 text-[1.1rem] focus:border-brand"
-        />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link href="/approver/antrean" className="font-semibold text-brand hover:underline">
             Kembali ke daftar usulan
@@ -389,13 +312,9 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
             <SubmitButton name="decision" value="reject" variant="secondary" pendingText="Menyimpan…">
               Tolak
             </SubmitButton>
-            {complete ? (
-              <SubmitButton name="decision" value="approve" pendingText="Menyimpan…">
-                Setujui
-              </SubmitButton>
-            ) : (
-              <DisabledButton className="!bg-[#6b7a8c] !text-white">Setujui · Menunggu dokumen</DisabledButton>
-            )}
+            <SubmitButton name="decision" value="approve" pendingText="Menyimpan…">
+              Setujui
+            </SubmitButton>
           </div>
         </div>
       </ActionForm>
@@ -406,7 +325,7 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
 
 export default function Page(props: Parameters<typeof UsulanDetail>[0]) {
   return (
-    <Suspense fallback={<PageFallback title="Detail usulan dan persetujuan" />}>
+    <Suspense fallback={<PageFallback title="Detail usulan dan catatan" />}>
       <UsulanDetail {...props} />
     </Suspense>
   );

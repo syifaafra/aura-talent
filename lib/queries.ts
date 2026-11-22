@@ -339,3 +339,83 @@ export function statusRows(badges: string[]): StatusRow[] {
   }
   return rows;
 }
+
+/* ----------------------- Match presentation helpers ----------------------- */
+
+export const CATEGORY_ORDER: MatchCategory[] = ["Match", "Partial Match", "Less Match"];
+
+/** Match, then Partial, then Less; within a category, positions with an active vacancy first. */
+export function sortedMatches(e: Employee): MatchRow[] {
+  return [...matchesFor(e)].sort(
+    (a, b) =>
+      CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) ||
+      Number(b.position.open) - Number(a.position.open),
+  );
+}
+
+/** Development areas of a position: required competencies not yet reached at the requested level. */
+export function devAreas(p: Position): string[] {
+  return [p.developmentArea, ...(p.moreDevelopmentAreas ?? [])].filter((x) => x && x !== "-");
+}
+
+export const DEV_AREA_INFO: Record<string, string> = {
+  "Perencanaan strategis":
+    "Kemampuan menerjemahkan arah perusahaan menjadi rencana kerja jangka menengah, menetapkan prioritas, dan mengukur hasilnya.",
+  "Pengendalian mutu lanjutan":
+    "Kemampuan merancang dan memperbaiki sistem pengendalian mutu, bukan hanya menjalankan prosedur yang sudah ada.",
+  "Manajemen rantai pasok":
+    "Kemampuan mengelola aliran bahan, informasi, dan pemasok dari hulu sampai ke produksi dan distribusi.",
+  "Sistem manajemen mutu":
+    "Pemahaman dan penerapan sistem manajemen mutu (mis. ISO 9001) pada seluruh proses unit kerja.",
+  "Kepemimpinan lintas unit":
+    "Kemampuan memimpin dan menyelaraskan pekerjaan beberapa unit yang tidak berada di bawah garis komando langsung.",
+};
+
+/** Other positions in the employee's scope that require the same competency. */
+export function relatedPositionsFor(e: Employee, area: string, excludeId: string): MatchRow[] {
+  return sortedMatches(e).filter(
+    (m) => m.position.id !== excludeId && (devAreas(m.position).includes(area) || m.position.competencies.includes(area)),
+  );
+}
+
+/** The five mandatory requirements in plain language with the evidence behind each. */
+export function mandatoryReqs(e: Employee): ReqItem[] {
+  const byKey = new Map(checklist(e).map((i) => [i.key, i]));
+  const rows: Array<[string, string]> = [
+    ["mdg", "Masa dalam grade cukup"],
+    ["kinerja", "KPI tercapai 2 tahun terakhir"],
+    ["asesmen", "Hasil asesmen direkomendasikan"],
+    ["sanksi", "Tidak sedang menjalani sanksi"],
+    ["masakerja", "Sisa masa kerja cukup"],
+  ];
+  return rows.map(([key, label]) => ({ ...byKey.get(key)!, label }));
+}
+
+export function mandatoryScore(e: Employee) {
+  const items = mandatoryReqs(e);
+  return { met: items.filter((i) => i.state === "Memenuhi").length, total: items.length };
+}
+
+export function matchSummary(e: Employee, row: MatchRow) {
+  const p = row.position;
+  const dev = devAreas(p).length;
+  const { met, total } = mandatoryScore(e);
+  return [
+    `${p.competencies.length} kompetensi sesuai`,
+    `${dev} development area`,
+    met === total ? "Syarat wajib lengkap" : "Syarat wajib belum lengkap",
+  ].join(" · ");
+}
+
+export function daysUntil(iso: string) {
+  return daysBetween(TODAY, iso);
+}
+
+/** Total steps in the approval path as shown to Karyawan/Atasan: HR + the approval stages. */
+export const STEP_TOTAL = APPROVAL_STAGES.length + 1;
+
+export function stepNumber(stage: Stage | "hr") {
+  if (stage === "hr" || stage === "draft") return 1;
+  const i = APPROVAL_STAGES.indexOf(stage);
+  return i < 0 ? STEP_TOTAL : i + 2;
+}

@@ -1,88 +1,182 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useState, type FormEvent } from "react";
 import { submitProposal } from "@/lib/actions";
 import { MAX_CANDIDATES, MIN_CANDIDATES, MIN_JUSTIFICATION, type FormState } from "@/lib/form";
 import { FormMessage, SubmitButton } from "@/components/forms";
-import { Modal } from "@/components/modal";
-import { Card, buttonClass, cn, inputClass } from "@/components/ui";
+import { Card, CardTitle, Notice, Pill, Table, Th, cn, inputClass } from "@/components/ui";
 
 export interface PoolItem {
   badge: string;
   name: string;
+  position: string;
+  score?: number;
   category: string;
+  /** Candidate.source as stored with the proposal. */
   source: string;
-  /** Set when the candidate was already submitted by Karyawan or Atasan for this position. */
-  nominatedBy?: "Karyawan" | "Atasan";
-  awaitingSupervisor?: boolean;
+  /** Answer of the Atasan Langsung to a self-nomination, or undefined when not applicable. */
+  supervisor?: "Diterima atasan" | "Belum direspons atasan";
+  recommended: boolean;
+  reqMet: number;
+  reqTotal: number;
 }
+
+const catTone = (c: string) => (c === "Match" ? "ok" : c === "Partial Match" ? "warn" : c === "Less Match" ? "danger" : "neutral");
 
 export function ProposalForm({
   vacancyId,
-  vacancyCode,
-  closeText,
   pool,
-  recommended,
   initial,
   initialNote,
+  savedAt,
 }: {
   vacancyId: string;
-  vacancyCode: string;
-  closeText: string;
   pool: PoolItem[];
-  recommended: string[];
   initial: string[];
   initialNote: string;
+  savedAt?: string;
 }) {
   const [state, action] = useActionState<FormState, FormData>(submitProposal, {});
   const [selected, setSelected] = useState<string[]>(initial);
   const [tab, setTab] = useState<"rekomendasi" | "talenta">("rekomendasi");
   const [note, setNote] = useState(initialNote);
-  const [pick, setPick] = useState("");
+  const [search, setSearch] = useState("");
+  const [problems, setProblems] = useState<string[]>([]);
 
   const byBadge = new Map(pool.map((p) => [p.badge, p]));
   const chosen = selected.flatMap((b) => (byBadge.get(b) ? [byBadge.get(b)!] : []));
-  const addable = pool.filter((p) => !selected.includes(p.badge));
-  const recAddable = addable.filter((p) => recommended.includes(p.badge) && !p.nominatedBy);
-  // One nomination per position: recommended candidates already submitted cannot be submitted again.
-  const recSubmitted = pool.filter((p) => recommended.includes(p.badge) && p.nominatedBy);
-  const [popup, setPopup] = useState<"range" | "max" | null>(null);
+  const recList = pool.filter((p) => p.recommended);
+  const talentList = pool.filter((p) => !search || `${p.name} ${p.badge}`.toLowerCase().includes(search.toLowerCase()));
+
+  const countOk = selected.length >= MIN_CANDIDATES && selected.length <= MAX_CANDIDATES;
+  const reqOk = chosen.every((c) => c.reqMet === c.reqTotal);
+  const noteOk = note.trim().length >= MIN_JUSTIFICATION;
+  const checks: Array<[boolean, string, string]> = [
+    [countOk, `Jumlah kandidat ${MIN_CANDIDATES}–${MAX_CANDIDATES} (saat ini ${selected.length})`, `Jumlah kandidat harus ${MIN_CANDIDATES}–${MAX_CANDIDATES}; saat ini ${selected.length}`],
+    [reqOk, "Semua syarat wajib terpenuhi", "Ada kandidat yang syarat wajibnya belum terpenuhi"],
+    [true, "Tidak ada kandidat ganda", ""],
+    [noteOk, `Keterangan diisi (min. ${MIN_JUSTIFICATION} karakter)`, `Keterangan usulan wajib diisi, minimal ${MIN_JUSTIFICATION} karakter`],
+  ];
+
   const add = (b: string) => {
-    if (!b || selected.includes(b)) return;
+    if (selected.includes(b)) return;
     if (selected.length >= MAX_CANDIDATES) {
-      setPopup("max");
+      setProblems([`Usulan memuat paling banyak ${MAX_CANDIDATES} kandidat. Keluarkan salah satu kandidat dahulu.`]);
       return;
     }
+    setProblems([]);
     setSelected((s) => [...s, b]);
   };
-  const outOfRange = selected.length < MIN_CANDIDATES || selected.length > MAX_CANDIDATES;
-  const noteOk = note.trim().length >= MIN_JUSTIFICATION;
+
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    if (submitter?.value !== "send") return setProblems([]);
+    const missing = checks.filter(([ok]) => !ok).map(([, , msg]) => msg);
+    if (missing.length > 0) {
+      e.preventDefault();
+      setProblems(missing);
+    } else setProblems([]);
+  };
+
+  const addRow = (p: PoolItem) => (
+    <li key={p.badge} className="flex items-center justify-between gap-4 py-3">
+      <div>
+        <p className="text-[1.15rem] font-semibold">
+          {p.name} <span className="font-normal text-muted">· {p.position}</span>
+        </p>
+        <p className="text-base text-muted">
+          {p.score !== undefined ? `${p.score} / 100 · ` : ""}
+          {p.category}
+        </p>
+      </div>
+      {selected.includes(p.badge) ? (
+        <span className="text-base text-muted">Sudah di usulan</span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => add(p.badge)}
+          className="rounded-lg border border-brand px-4 py-2 font-semibold text-brand hover:bg-brand-soft"
+        >
+          + Tambahkan
+        </button>
+      )}
+    </li>
+  );
 
   return (
-    <form
-      action={action}
-      className="space-y-6"
-      onSubmit={(e) => {
-        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-        if (submitter?.value === "send" && outOfRange) {
-          e.preventDefault();
-          setPopup("range");
-        }
-      }}
-    >
+    <form action={action} onSubmit={onSubmit} noValidate className="space-y-6">
       <input type="hidden" name="vacancyId" value={vacancyId} />
       {selected.map((b) => (
         <input key={b} type="hidden" name="badge" value={b} />
       ))}
 
-      <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
         <div className="space-y-6">
+          <Card className="p-2">
+            <div className="px-4 pt-4">
+              <CardTitle className="mb-0">Kandidat dalam usulan ({chosen.length})</CardTitle>
+            </div>
+            {chosen.length === 0 ? (
+              <p className="px-4 py-5 text-[1.1rem] text-muted">Belum ada kandidat dipilih. Tambahkan dari kartu di bawah.</p>
+            ) : (
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Kandidat</Th>
+                    <Th>Readiness score</Th>
+                    <Th>Syarat</Th>
+                    <Th>Sumber</Th>
+                    <Th>
+                      <span className="sr-only">Aksi</span>
+                    </Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chosen.map((c) => (
+                    <tr key={c.badge}>
+                      <td className="border-t border-line px-4 py-3 align-middle">
+                        <p className="text-[1.15rem] font-semibold">{c.name}</p>
+                        <p className="text-base text-muted">{c.position}</p>
+                      </td>
+                      <td className="border-t border-line px-4 py-3 align-middle">
+                        <span className="mr-2 font-semibold text-brand">{c.score !== undefined ? `${c.score} / 100` : "–"}</span>
+                        <Pill tone={catTone(c.category)}>{c.category}</Pill>
+                      </td>
+                      <td className={cn("border-t border-line px-4 py-3 align-middle font-semibold", c.reqMet === c.reqTotal ? "text-ok" : "text-warn")}>
+                        {c.reqMet === c.reqTotal ? "✓" : "!"} {c.reqMet}/{c.reqTotal}
+                      </td>
+                      <td className="border-t border-line px-4 py-3 align-middle text-[1.05rem]">
+                        {c.source}
+                        {c.supervisor ? (
+                          <span className="mt-1 block">
+                            <Pill tone={c.supervisor === "Diterima atasan" ? "ok" : "warn"}>{c.supervisor}</Pill>
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="border-t border-line px-4 py-3 text-right align-middle">
+                        <button
+                          type="button"
+                          onClick={() => setSelected((s) => s.filter((x) => x !== c.badge))}
+                          className="font-semibold text-danger hover:underline"
+                          aria-label={`Keluarkan ${c.name} dari usulan`}
+                        >
+                          Keluarkan
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+          </Card>
+
           <Card>
-            <div role="tablist" aria-label="Sumber kandidat" className="mb-5 flex gap-8 border-b border-line">
+            <CardTitle>Tambah kandidat</CardTitle>
+            <div role="tablist" aria-label="Sumber kandidat" className="mb-4 flex gap-8 border-b border-line">
               {(
                 [
-                  ["rekomendasi", "Kandidat rekomendasi"],
+                  ["rekomendasi", `Rekomendasi AI (${recList.length})`],
                   ["talenta", "Daftar Talenta"],
                 ] as const
               ).map(([k, label]) => (
@@ -93,7 +187,7 @@ export function ProposalForm({
                   aria-selected={tab === k}
                   onClick={() => setTab(k)}
                   className={cn(
-                    "-mb-px border-b-[3px] px-1 pb-3 text-[1.25rem] font-semibold",
+                    "-mb-px border-b-[3px] px-1 pb-3 text-[1.2rem] font-semibold",
                     tab === k ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink",
                   )}
                 >
@@ -101,97 +195,31 @@ export function ProposalForm({
                 </button>
               ))}
             </div>
-
-            <ul className="space-y-5">
-              {chosen.length === 0 ? <li className="text-[1.1rem] text-muted">Belum ada kandidat dipilih.</li> : null}
-              {chosen.map((c) => (
-                <li key={c.badge} className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[1.3rem]">
-                      <span className="text-brand">✓</span> {c.name} · {c.category} · {c.source}
-                      {c.awaitingSupervisor ? " · Belum direspons atasan" : ""}
-                    </p>
-                    <p className="ml-6 mt-1 text-[1.05rem] text-muted">Syarat wajib memenuhi</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelected((s) => s.filter((x) => x !== c.badge))}
-                    className="font-semibold text-danger hover:underline"
-                    aria-label={`Batalkan ${c.name}`}
-                  >
-                    Batalkan
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-6">
-              {tab === "talenta" ? (
-                <div className="flex gap-3">
-                  <label htmlFor="talent" className="sr-only">
-                    Pilih kandidat dari Daftar Talenta
-                  </label>
-                  <select
-                    id="talent"
-                    value={pick}
-                    onChange={(e) => setPick(e.target.value)}
-                    className={cn(inputClass, "flex-1")}
-                  >
-                    <option value="">Pilih kandidat dari Daftar Talenta</option>
-                    {addable.map((p) => (
-                      <option key={p.badge} value={p.badge}>
-                        {p.name} · {p.category}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    disabled={!pick}
-                    onClick={() => {
-                      add(pick);
-                      setPick("");
-                    }}
-                    className="rounded-lg bg-brand-soft px-5 font-semibold text-brand hover:bg-[#d3e7f7] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Tambah
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {recAddable.length > 0 ? (
-                    <div className="flex flex-wrap gap-3">
-                      {recAddable.map((p) => (
-                        <button
-                          key={p.badge}
-                          type="button"
-                          onClick={() => add(p.badge)}
-                          className="rounded-lg border border-brand px-4 py-2 font-semibold text-brand hover:bg-brand-soft"
-                        >
-                          + {p.name}
-                        </button>
-                      ))}
-                    </div>
-                  ) : recSubmitted.length === 0 ? (
-                    <p className="text-[1.05rem] text-muted">Semua kandidat rekomendasi sudah dipilih.</p>
-                  ) : null}
-                  {recSubmitted.length > 0 ? (
-                    <ul className="mt-3 space-y-1 text-[1.05rem] text-muted">
-                      {recSubmitted.map((p) => (
-                        <li key={p.badge}>
-                          {p.name} · Sudah diajukan {p.nominatedBy === "Atasan" ? "Atasan Langsung" : "Karyawan"}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </>
-              )}
-            </div>
+            {tab === "talenta" ? (
+              <>
+                <label htmlFor="cari" className="sr-only">
+                  Cari nama atau NIK
+                </label>
+                <input
+                  id="cari"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari nama atau NIK…"
+                  className={cn(inputClass, "mb-2")}
+                />
+              </>
+            ) : null}
+            <ul className="divide-y divide-line">{(tab === "rekomendasi" ? recList : talentList).map(addRow)}</ul>
+            {(tab === "rekomendasi" ? recList : talentList).length === 0 ? (
+              <p className="text-[1.1rem] text-muted">Tidak ada kandidat.</p>
+            ) : null}
           </Card>
 
           <Card>
-            <label htmlFor="note" className="mb-3 block text-[1.4rem] font-semibold">
-              Keterangan
+            <label htmlFor="note" className="mb-1 block text-[1.4rem] font-semibold">
+              Keterangan usulan *
             </label>
+            <p className="mb-3 text-[1.05rem] text-muted">Jelaskan dasar penyusunan usulan ini untuk dibaca Approver.</p>
             <textarea
               id="note"
               name="note"
@@ -199,68 +227,56 @@ export function ProposalForm({
               onChange={(e) => setNote(e.target.value)}
               rows={4}
               className="w-full resize-y rounded-lg border border-line px-4 py-3 text-[1.15rem] focus:border-brand"
-              placeholder="Alasan pengajuan kandidat…"
+              placeholder="Contoh: Ketiga kandidat memenuhi syarat wajib dan memiliki readiness score tertinggi untuk jabatan ini…"
             />
             <p className={cn("mt-2 text-base", noteOk ? "text-ok" : "text-muted")}>
-              Minimal {MIN_JUSTIFICATION} karakter · Wajib diisi · {note.trim().length} karakter
+              Minimal {MIN_JUSTIFICATION} karakter · {note.trim().length} karakter
             </p>
           </Card>
         </div>
 
-        <Card tone="soft" className="flex flex-col">
-          <h2 className="mb-4 text-[1.55rem] font-semibold text-brand">Siap dikirim ke VP SDM</h2>
-          <p className="text-[1.25rem] leading-relaxed">{selected.length} kandidat dipilih</p>
-          <p className="mt-8 text-[1.1rem] leading-relaxed text-muted">
-            Dokumen berstatus Menunggu tidak menggugurkan pencalonan awal. Lengkapi sebelum persetujuan akhir PIHC.
-          </p>
-          <p className={cn("mt-6 text-[1.1rem]", outOfRange ? "text-warn" : "text-muted")}>
-            Usulan harus memuat {MIN_CANDIDATES}–{MAX_CANDIDATES} kandidat.
-          </p>
-          <p className="mt-auto pt-6 text-sm text-muted">
-            {vacancyCode ? `Lowongan ${vacancyCode} · ` : ""}
-            {closeText}
+        <Card tone="soft" className="h-fit">
+          <h2 className="mb-4 text-[1.5rem] font-semibold text-brand">Kesiapan usulan</h2>
+          <ul className="space-y-3">
+            {checks.map(([ok, label]) => (
+              <li key={label} className="flex items-start gap-3 text-[1.1rem]">
+                <span className={cn("font-bold", ok ? "text-ok" : "text-warn")}>{ok ? "✓" : "!"}</span>
+                <span>{label}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-[1.05rem] leading-relaxed text-muted">
+            Setelah dikirim, usulan masuk ke VP SDM dan kandidat tidak bisa diubah. Wawancara, kesehatan, dan LHKPN tetap
+            dilengkapi sebelum persetujuan akhir PIHC.
           </p>
         </Card>
       </div>
 
+      {problems.length > 0 ? (
+        <Notice tone="warn" title="Usulan belum bisa dikirim">
+          <ul className="list-disc pl-5">
+            {problems.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </Notice>
+      ) : null}
       <FormMessage state={state} />
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <SubmitButton name="mode" value="save" variant="secondary" pendingText="Menyimpan…">
-          Simpan pencalonan
-        </SubmitButton>
         <div className="flex items-center gap-4">
-          <Link href="/hr/rekomendasi" className="font-semibold text-brand hover:underline">
-            Kembali ke rekomendasi
-          </Link>
-          <SubmitButton name="mode" value="send" pendingText="Mengirim…">
-            Kirim Usulan
+          <SubmitButton name="mode" value="save" variant="secondary" pendingText="Menyimpan…">
+            Simpan draf
           </SubmitButton>
+          <Link href="/hr/rekomendasi" className="sr-only">
+            Kembali
+          </Link>
+          {savedAt ? <span className="text-base text-muted">Draf tersimpan {savedAt}</span> : null}
         </div>
+        <SubmitButton name="mode" value="send" pendingText="Mengirim…">
+          Kirim ke VP SDM
+        </SubmitButton>
       </div>
-      {popup ? (
-        <Modal
-          title="Pengajuan gagal"
-          subtitle={popup === "max" ? "Kandidat tidak dapat ditambahkan" : "Usulan belum dapat dikirim ke VP SDM"}
-          width="max-w-[34rem]"
-          onClose={() => setPopup(null)}
-        >
-          <p className="text-[1.2rem] leading-relaxed">
-            {popup === "max"
-              ? `Jumlah kandidat maksimal ${MAX_CANDIDATES}. Batalkan salah satu kandidat terlebih dahulu sebelum menambah kandidat lain.`
-              : `Jumlah kandidat harus ${MIN_CANDIDATES}–${MAX_CANDIDATES}. Saat ini ${selected.length} kandidat dipilih${
-                  selected.length < MIN_CANDIDATES
-                    ? `; tambahkan minimal ${MIN_CANDIDATES - selected.length} kandidat lagi dari Daftar Talenta.`
-                    : `; kurangi ${selected.length - MAX_CANDIDATES} kandidat.`
-                }`}
-          </p>
-          <div className="mt-6 flex justify-end">
-            <button type="button" onClick={() => setPopup(null)} className={buttonClass("primary")}>
-              Mengerti
-            </button>
-          </div>
-        </Modal>
-      ) : null}
     </form>
   );
 }

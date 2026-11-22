@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { PageFallback } from "@/components/page-fallback";
-import { MatchList, parseTab } from "@/components/match-list";
+import { MatchList, parseFilter } from "@/components/match-list";
 import { NoProfile, UndeterminedView, profileLine } from "@/components/profile";
 import { PageHeader } from "@/components/ui";
-import { isCategoryDeterminable, matchesFor } from "@/lib/queries";
+import { isCategoryDeterminable } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Kecocokan jabatan · AURA Talent" };
@@ -22,13 +22,12 @@ async function KecocokanPage({
       <PageHeader title="Kecocokan jabatan saya" subtitle={profileLine(e)} />
       {isCategoryDeterminable(e) ? (
         <MatchList
-          rows={matchesFor(e)}
-          tab={parseTab(sp.tab)}
-          q={typeof sp.q === "string" ? sp.q : ""}
-          basePath="/karyawan/kecocokan"
-          unit={e.unit}
-          detailBase="/karyawan/kecocokan"
-        />
+        e={e}
+        filter={parseFilter(sp.kategori)}
+        basePath="/karyawan/kecocokan"
+        detailHref={(r) => `/karyawan/kecocokan/${r.position.id}`}
+        scope="Jabatan satu level di atas jabatan Anda, dalam rumpun yang sama dengan jabatan kini atau riwayat jabatan Anda."
+      />
       ) : (
         <UndeterminedView e={e} />
       )}

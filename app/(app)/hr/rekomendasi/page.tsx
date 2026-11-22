@@ -1,19 +1,19 @@
 import { Suspense } from "react";
 import { PageFallback } from "@/components/page-fallback";
-import Link from "next/link";
-import { ButtonLink, Card, DisabledButton, Notice, PageHeader, cn, inputClass } from "@/components/ui";
-import { db, fmtDateTime } from "@/lib/db";
+import { ButtonLink, Card, DisabledButton, Notice, PageHeader, Pill } from "@/components/ui";
+import { db, fmtDateTime, fmtLong } from "@/lib/db";
 import {
+  activeNomination,
   categoryFromScore,
+  mandatoryScore,
   getEmployee,
   getPosition,
   isCategoryDeterminable,
   proposalForVacancy,
   repositoryEmployees,
 } from "@/lib/queries";
-import { MIN_CANDIDATES } from "@/lib/form";
 import { requireRole } from "@/lib/session";
-import { RecommendationTable, type RecRow } from "./recommendation-table";
+import { RecommendationTable, VacancySelect, type RecRow } from "./recommendation-table";
 
 export const metadata = { title: "Rekomendasi kandidat · AURA Talent" };
 
@@ -33,14 +33,23 @@ async function RekomendasiPage({
   const rows: RecRow[] = recs.flatMap((r) => {
     const e = getEmployee(r.badge);
     if (!e) return [];
-    const cat = categoryFromScore(r.score);
+    const nom = activeNomination(r.badge, chosen.id);
+    const { met, total } = mandatoryScore(e);
     return [
       {
-        ...r,
+        badge: r.badge,
         name: e.name,
-        category: cat,
+        position: e.position,
+        score: r.score,
+        category: categoryFromScore(r.score),
+        change: r.change,
+        changeBy: r.changeBy,
+        nominated: nom ? (nom.source === "Diri sendiri" ? "Diajukan Karyawan" : "Diajukan Atasan") : "",
+        indicators: r.indicators,
         strengths: e.strengths || r.reason,
-        development: r.gap,
+        gap: r.gap,
+        reqMet: met,
+        reqTotal: total,
       },
     ];
   });
@@ -53,30 +62,24 @@ async function RekomendasiPage({
     }));
 
   const selector = (
-    <form action="/hr/rekomendasi" className="mb-6 flex flex-wrap items-end gap-4">
-      <div className="min-w-[22rem]">
-        <label htmlFor="jabatan" className="mb-1.5 block text-base font-semibold text-muted">
-          Posisi / jabatan
-        </label>
-        <select id="jabatan" name="jabatan" defaultValue={chosen.id} className={cn(inputClass, "border-brand font-medium")}>
-          {vacancies.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.title} · {p.label}
-            </option>
-          ))}
-        </select>
+    <Card className="mb-6 flex flex-wrap items-center justify-between gap-6">
+      <div>
+        <label className="mb-1.5 block text-base font-semibold text-muted">Jabatan</label>
+        <VacancySelect value={chosen.id} options={vacancies.map((p) => ({ id: p.id, title: p.title }))} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Pill tone={chosen.open ? "ok" : "neutral"}>
+            {chosen.open && chosen.openUntil ? `Lowongan aktif sampai ${fmtLong(chosen.openUntil)}` : "Belum ada lowongan aktif"}
+          </Pill>
+          <Pill tone="brand">Prediksi kosong</Pill>
+        </div>
       </div>
-      <button type="submit" className="rounded-lg bg-brand-soft px-6 py-3 font-semibold text-brand hover:bg-[#d3e7f7]">
-        Tampilkan
-      </button>
       {rows.length > 0 ? (
-        <div className="rounded-lg bg-white px-5 py-2.5 text-base">
-          <p className="text-sm font-semibold text-muted">Versi rekomendasi</p>
-          <p className="font-medium text-brand">Versi: {fmtDateTime("2026-10-31T02:00")} (terbaru)</p>
+        <div className="text-right text-base">
+          <p className="font-medium text-brand">Versi rekomendasi: {fmtDateTime("2026-10-31T02:00")} (terbaru)</p>
           <p className="text-brand">Lihat riwayat versi</p>
         </div>
       ) : null}
-    </form>
+    </Card>
   );
 
   if (rows.length === 0) {
@@ -84,7 +87,7 @@ async function RekomendasiPage({
       <>
         <PageHeader
           title="Rekomendasi kandidat"
-          subtitle={`${chosen.title} · ${chosen.label} · Hasil evaluasi saat tidak ada kandidat yang memenuhi kesiapan.`}
+          subtitle={`${chosen.title} · Hasil evaluasi saat tidak ada kandidat yang memenuhi kesiapan.`}
         />
         {selector}
         <div className="space-y-6">
@@ -113,25 +116,10 @@ async function RekomendasiPage({
     <>
       <PageHeader
         title="Rekomendasi kandidat"
-        subtitle={`${chosen.title} · ${chosen.label} · Peringkat berdasarkan syarat wajib dan readiness score`}
+        subtitle="Peringkat AI berdasarkan syarat wajib dan readiness score. Pilih 2–5 kandidat untuk disusun menjadi usulan promosi."
       />
       {selector}
-      {locked ? (
-        <Notice className="mb-6" title={`Usulan ${locked} sudah dikirim`}>
-          Jabatan ini sudah memiliki usulan berjalan.{" "}
-          <Link href={`/hr/persetujuan/${locked}`} className="font-semibold underline">
-            Lihat status persetujuan
-          </Link>
-          .
-        </Notice>
-      ) : null}
-      {rows.length < MIN_CANDIDATES ? (
-        <Notice tone="warn" title={`Rekomendasi hanya menghasilkan ${rows.length} kandidat`} className="mb-6">
-          Pencalonan membutuhkan minimal {MIN_CANDIDATES} kandidat. Lanjutkan ke formulir pencalonan dan tambahkan kandidat
-          lain dari Daftar Talenta sebelum mengirim usulan.
-        </Notice>
-      ) : null}
-      <RecommendationTable rows={rows} vacancyId={chosen.id} lockedBy={locked} />
+      <RecommendationTable rows={rows} vacancyId={chosen.id} lockedBy={locked} versionDate="31 Okt 2026" />
       {incomplete.length > 0 ? (
         <Notice tone="warn" title="Data kandidat belum lengkap" className="mt-6">
           {incomplete.map((i) => (

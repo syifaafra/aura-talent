@@ -85,11 +85,11 @@ export const STAGE_LABEL: Record<Stage, string> = {
 
 export const STAGE_TASK: Record<Stage, string> = {
   draft: "Menyusun usulan",
-  vp: "Persetujuan usulan",
-  svp: "Persetujuan usulan",
-  direksi1: "Persetujuan usulan",
-  direksi2: "Persetujuan usulan",
-  direksi3: "Persetujuan usulan",
+  vp: "Pemberian catatan",
+  svp: "Pemberian catatan",
+  direksi1: "Pemberian catatan",
+  direksi2: "Pemberian catatan",
+  direksi3: "Pemberian catatan",
   dirut: "Pemilihan dan penetapan calon",
   pihc: "Persetujuan akhir · Kelengkapan persyaratan",
   selesai: "Usulan selesai",
@@ -145,6 +145,8 @@ export interface Position {
   competencies: string[];
   keyStrength: string;
   developmentArea: string;
+  /** Further development areas beyond the first one (kompetensi yang disyaratkan tetapi belum tercapai). */
+  moreDevelopmentAreas?: string[];
   relatedPosition: string;
 }
 
@@ -549,6 +551,7 @@ function createSeed(): Store {
       keyStrength:
         "Pengalaman produksi lintas lini dan konsistensi capaian KPI dua tahun terakhir mendukung tanggung jawab jabatan tujuan.",
       developmentArea: "Perencanaan strategis",
+      moreDevelopmentAreas: ["Manajemen rantai pasok"],
       relatedPosition: "Manajer Operasi Produksi",
     },
     {
@@ -987,11 +990,11 @@ function createSeed(): Store {
         ],
         [
           { at: "2026-11-20T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-          { at: "2026-11-21T10:30", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-23T14:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-26T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-28T11:15", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-30T09:45", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-21T10:30", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-23T14:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-26T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-28T11:15", stage: "direksi2", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-30T09:45", stage: "direksi3", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
           { at: "2026-12-03T10:00", stage: "dirut", action: "Calon ditetapkan", note: "Bhima Adiputra" },
         ],
         [
@@ -1018,7 +1021,7 @@ function createSeed(): Store {
       ],
       [
         { at: "2026-11-30T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-        { at: "2026-12-02T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-02T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
       ],
       [{ stage: "vp", badge: "000012", text: "Kinerja unggul; pertimbangkan penugasan lintas unit." }],
     ),
@@ -1038,11 +1041,11 @@ function createSeed(): Store {
       ],
       [
         { at: "2026-11-22T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-        { at: "2026-11-23T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-11-25T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-11-27T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-11-29T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-12-01T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-23T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-25T10:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-27T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-29T10:00", stage: "direksi2", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-01T10:00", stage: "direksi3", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
         { at: "2026-12-02T10:00", stage: "dirut", action: "Calon ditetapkan", note: "Andi Saputra" },
         {
           at: "2026-12-04T13:00",
@@ -1072,11 +1075,11 @@ function createSeed(): Store {
         ],
         [
           { at: "2026-11-25T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-          { at: "2026-11-26T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-28T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-29T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-30T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-26T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-28T10:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-29T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-30T10:00", stage: "direksi2", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-03T10:00", stage: "direksi3", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
         ],
         [{ stage: "direksi1", badge: "000009", text: "Konsistensi KPI dan pengalaman lini produksi sesuai kebutuhan." }],
       ),
@@ -1098,10 +1101,10 @@ function createSeed(): Store {
         ],
         [
           { at: "2026-11-20T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-          { at: "2026-11-22T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-24T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-27T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-29T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-22T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-24T10:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-27T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-29T10:00", stage: "direksi2", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
         ],
       ),
     },
@@ -1121,11 +1124,11 @@ function createSeed(): Store {
         ],
         [
           { at: "2026-11-24T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-          { at: "2026-11-25T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-27T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-30T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-12-02T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-25T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-27T10:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-30T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-02T10:00", stage: "direksi2", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-03T10:00", stage: "direksi3", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
         ],
         [
           { stage: "vp", badge: "000012", text: "Kinerja unggul; pertimbangkan penugasan lintas unit." },
@@ -1151,11 +1154,11 @@ function createSeed(): Store {
         ],
         [
           { at: "2026-11-24T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-          { at: "2026-11-25T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-27T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-30T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-12-02T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-25T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-27T10:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-30T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-02T10:00", stage: "direksi2", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-03T10:00", stage: "direksi3", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
           { at: "2026-12-04T09:00", stage: "dirut", action: "Calon ditetapkan", note: "Andi Saputra" },
         ],
       ),
@@ -1178,11 +1181,11 @@ function createSeed(): Store {
         ],
         [
           { at: "2026-11-05T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-          { at: "2026-11-07T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-10T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-12T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-14T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-16T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-07T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-10T10:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-12T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-14T10:00", stage: "direksi2", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-16T10:00", stage: "direksi3", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-17T10:00", stage: "dirut", action: "Calon ditetapkan", note: "Citra Lestari" },
           { at: "2026-11-18T13:00", stage: "pihc", action: "Persetujuan akhir", note: "Citra Lestari" },
         ],
@@ -1206,8 +1209,8 @@ function createSeed(): Store {
       ],
       [
         { at: "2026-12-01T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-        { at: "2026-12-02T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-12-04T09:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-02T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-04T09:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
       ],
       [{ stage: "vp", badge: "000004", text: "Perlu pengalaman lintas fungsi sebagai pengembangan." }],
     ),
@@ -1226,9 +1229,9 @@ function createSeed(): Store {
       ],
       [
         { at: "2026-11-27T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
-        { at: "2026-11-28T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-11-30T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-12-03T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-28T10:00", stage: "vp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-30T10:00", stage: "svp", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-03T10:00", stage: "direksi1", action: "Catatan dikirim", note: "Seluruh kandidat diteruskan" },
       ],
     ),
   ];
@@ -1315,16 +1318,16 @@ function createSeed(): Store {
 
   const notifs: Notif[] = [
     { id: "n1", role: "vp", kind: "Pengingat persetujuan", title: "U-2026-006 · Manajer Produksi", body: "Batas keputusan VP terlewati 1 hari.", at: "2026-12-04T06:00", proposalId: "U-2026-006", read: false },
-    { id: "n2", role: "vp", kind: "Usulan baru", title: "U-2026-007 · Manajer Operasi", body: "Menunggu persetujuan VP SDM.", at: "2026-12-03T09:00", proposalId: "U-2026-007", read: false },
-    { id: "n3", role: "vp", kind: "Usulan baru", title: "U-2026-008 · Manajer SDM", body: "Menunggu persetujuan VP SDM.", at: "2026-12-04T09:00", proposalId: "U-2026-008", read: false },
+    { id: "n2", role: "vp", kind: "Usulan baru", title: "U-2026-007 · Manajer Operasi", body: "Menunggu catatan VP SDM.", at: "2026-12-03T09:00", proposalId: "U-2026-007", read: false },
+    { id: "n3", role: "vp", kind: "Usulan baru", title: "U-2026-008 · Manajer SDM", body: "Menunggu catatan VP SDM.", at: "2026-12-04T09:00", proposalId: "U-2026-008", read: false },
     { id: "n3b", role: "pihc", kind: "Usulan baru", title: "U-2026-003 · Manajer Operasi Produksi", body: "Calon ditetapkan: Bhima Adiputra. Menunggu persetujuan akhir PIHC.", at: "2026-12-03T10:00", proposalId: "U-2026-003", read: false },
     { id: "n4", role: "hr", kind: "Eskalasi SLA", title: "U-2026-006 · Manajer Produksi", body: "Persetujuan VP SDM melewati batas waktu 1 hari.", at: "2026-12-04T06:00", proposalId: "U-2026-006", read: false },
     { id: "n5", role: "hr", kind: "Pembaruan data", title: "Sinkronisasi PI Smart gagal", body: "Sistem menggunakan data terakhir yang tersimpan (31/10/2026).", at: "2026-11-01T01:00", read: false },
     { id: "n6", role: "hr", kind: "Usulan baru", title: "Pencalonan diri baru", body: "Budi Budiman mencalonkan diri untuk Manajer Produksi.", at: "2026-11-20T10:00", read: false },
-    { id: "n7", role: "karyawan", kind: "Status pencalonan", title: "U-2026-006 · Manajer Produksi", body: "Pencalonan Anda menunggu persetujuan VP SDM.", at: "2026-12-01T09:00", proposalId: "U-2026-006", read: false },
+    { id: "n7", role: "karyawan", kind: "Status pencalonan", title: "U-2026-006 · Manajer Produksi", body: "Pencalonan Anda menunggu catatan VP SDM.", at: "2026-12-01T09:00", proposalId: "U-2026-006", read: false },
     { id: "n8", role: "karyawan", kind: "Dokumen", title: "Syarat promosi", body: "Wawancara, kesehatan, dan LHKPN masih menunggu.", at: "2026-11-25T08:00", read: false },
     { id: "n9", role: "karyawan", kind: "Asesmen", title: "Asesmen valid", body: "Asesmen diperbarui 31 Oktober 2026.", at: "2026-10-31T08:00", read: false },
-    { id: "n10", role: "atasan", kind: "Status pencalonan", title: "Budi Budiman · Manajer Produksi", body: "Pencalonan bawahan menunggu persetujuan VP SDM.", at: "2026-12-01T09:00", proposalId: "U-2026-006", read: false },
+    { id: "n10", role: "atasan", kind: "Status pencalonan", title: "Budi Budiman · Manajer Produksi", body: "Pencalonan bawahan menunggu catatan VP SDM.", at: "2026-12-01T09:00", proposalId: "U-2026-006", read: false },
     { id: "n11", role: "atasan", kind: "Kecocokan", title: "Kecocokan bawahan", body: "2 bawahan belum dapat ditentukan kategorinya.", at: "2026-11-25T08:00", read: false },
     { id: "n12", role: "atasan", kind: "Data", title: "Diandra Pertiwi", body: "Nilai akhir kinerja belum tersedia.", at: "2026-11-25T08:00", read: false },
     { id: "n13", role: "svp", kind: "Usulan baru", title: "U-2026-009 · Manajer Anggaran", body: "Menunggu keputusan SVP SDM. Jatuh tempo hari ini.", at: "2026-12-02T10:00", proposalId: "U-2026-009", read: false },

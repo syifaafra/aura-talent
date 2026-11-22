@@ -1,17 +1,21 @@
 import { Suspense } from "react";
 import { PageFallback } from "@/components/page-fallback";
 import Link from "next/link";
+import { CategoryBadge } from "@/components/match-list";
 import { NoProfile, UndeterminedView } from "@/components/profile";
 import { NominationForm } from "@/components/nomination-form";
-import { ButtonLink, Card, Notice, PageHeader } from "@/components/ui";
+import { ButtonLink, Card, EmptyState, Notice, PageHeader, Pill } from "@/components/ui";
 import { fmtLong } from "@/lib/db";
 import {
-  checklist,
-  eligibleVacancies,
+  activeNomination,
+  daysUntil,
+  devAreas,
   isCategoryDeterminable,
+  mandatoryReqs,
+  matchesFor,
   nominationBlock,
   pendingDocuments,
-  statusRows,
+  sortedMatches,
 } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
@@ -35,102 +39,128 @@ async function PencalonanPage({
     );
   }
 
-  const options = eligibleVacancies(e);
+  /* ----------------------- Layar B: formulir pencalonan diri ----------------------- */
   const requested = typeof sp.jabatan === "string" ? sp.jabatan : undefined;
-  const chosen = requested
-    ? options.find((o) => o.position.id === requested)
-    : options.length === 1
-      ? options[0]
-      : undefined;
-
-  if (requested && !chosen) {
-    return (
-      <>
-        <PageHeader title="Formulir pencalonan diri" />
-        <Notice tone="warn" title="Pencalonan tidak dapat dilakukan">
-          {nominationBlock(e.badge, requested) ?? "Jabatan tidak tersedia."}
-        </Notice>
-        <div className="mt-6">
-          <ButtonLink variant="secondary" href="/karyawan/kecocokan">
-            Kembali ke kecocokan jabatan
-          </ButtonLink>
-        </div>
-      </>
-    );
-  }
-
-  if (chosen) {
-    const p = chosen.position;
+  if (requested) {
+    const row = matchesFor(e).find((m) => m.position.id === requested);
+    const block = nominationBlock(e.badge, requested);
+    if (!row || block) {
+      return (
+        <>
+          <PageHeader
+            title="Calonkan diri"
+            back={
+              <Link href="/karyawan/pencalonan" className="hover:underline">
+                ← Pilih jabatan
+              </Link>
+            }
+          />
+          <Notice tone="warn" title="Pencalonan tidak dapat dilakukan">
+            {block ?? "Jabatan tidak tersedia dalam cakupan Anda."}
+          </Notice>
+          <div className="mt-6">
+            <ButtonLink variant="secondary" href="/karyawan/pencalonan">
+              Kembali ke daftar jabatan
+            </ButtonLink>
+          </div>
+        </>
+      );
+    }
+    const p = row.position;
+    const left = p.openUntil ? daysUntil(p.openUntil) : undefined;
     return (
       <>
         <PageHeader
-          title="Formulir pencalonan diri"
-          subtitle={`${p.title} · Lowongan ${p.vacancyCode} · Tutup ${p.openUntil ? fmtLong(p.openUntil) : "-"}`}
-          action={
-            <Link
-              href={`/karyawan/kecocokan/${p.id}`}
-              className="rounded-lg border border-brand bg-white px-5 py-2.5 text-[1.1rem] font-semibold text-brand hover:bg-brand-soft"
-            >
-              Kembali ke detail jabatan
+          title={`Calonkan diri: ${p.title}`}
+          subtitle="Periksa jabatan dan syaratnya, tulis alasan Anda, lalu kirim."
+          back={
+            <Link href="/karyawan/pencalonan" className="hover:underline">
+              ← Pilih jabatan
             </Link>
           }
         />
         <NominationForm
           mode="karyawan"
-          vacancyId={p.id}
-          positionTitle={p.title}
-          vacancyCode={p.vacancyCode ?? ""}
-          closeText={p.openUntil ? `Tutup ${fmtLong(p.openUntil)}` : ""}
-          candidate={{ badge: e.badge, name: e.name }}
-          items={checklist(e)}
-          pending={pendingDocuments(e).map((x) => (x === "Kesehatan" ? "kesehatan" : x))}
-          backHref="/karyawan/kecocokan"
-          backLabel="Batal"
+          position={{
+            id: p.id,
+            title: p.title,
+            unit: p.unit,
+            vacancyCode: p.vacancyCode ?? "",
+            closeText: p.openUntil ? `Tutup ${fmtLong(p.openUntil)}` : "",
+            remaining: left !== undefined && left >= 0 ? `sisa ${left} hari` : "",
+            category: row.category,
+            competencies: p.competencies,
+            developmentAreas: devAreas(p),
+          }}
+          candidate={{ badge: e.badge, name: e.name, position: e.position }}
+          items={mandatoryReqs(e)}
+          pending={pendingDocuments(e)}
+          detailHref={`/karyawan/kecocokan/${p.id}`}
+          backHref="/karyawan/pencalonan"
         />
       </>
     );
   }
 
-  const mine = statusRows([e.badge]);
+  /* ----------------------------- Layar A: pilih jabatan ----------------------------- */
+  const open = sortedMatches(e).filter((m) => m.position.open);
   return (
     <>
-      <PageHeader title="Pencalonan saya" subtitle="Calonkan diri untuk jabatan satu level di atas yang memiliki lowongan aktif." />
-      {options.length > 1 ? (
-        <ul className="space-y-4">
-          {options.map((o) => (
-            <li key={o.position.id}>
-              <Card className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[1.4rem] font-semibold">
-                    {o.position.title} · {o.position.label}
-                  </p>
-                  <p className="text-[1.1rem] text-muted">Kategori Match · Lowongan aktif</p>
-                </div>
-                <ButtonLink href={`/karyawan/pencalonan?jabatan=${o.position.id}`}>Calonkan Diri</ButtonLink>
-              </Card>
-            </li>
-          ))}
-        </ul>
+      <PageHeader title="Pilih jabatan yang ingin Anda lamar" subtitle="Calonkan diri untuk jabatan yang sedang membuka lowongan." />
+      <Notice className="mb-6">
+        Hanya jabatan satu level di atas dalam rumpun Anda yang sedang membuka lowongan yang ditampilkan.
+      </Notice>
+      {open.length === 0 ? (
+        <EmptyState title="Belum ada lowongan aktif">
+          Tidak ada jabatan dalam cakupan Anda yang sedang membuka lowongan. Periksa{" "}
+          <Link href="/karyawan/kecocokan" className="font-semibold text-brand underline">
+            kecocokan jabatan
+          </Link>
+          .
+        </EmptyState>
       ) : (
-        <Notice tone={mine.length ? "brand" : "warn"} title={mine.length ? "Anda sudah mengajukan pencalonan" : "Belum ada lowongan aktif"}>
-          {mine.length ? (
-            <>
-              Pencalonan Anda untuk {mine.map((m) => m.title).join(", ")} sedang diproses.{" "}
-              <Link href="/karyawan/status" className="font-semibold underline">
-                Lihat status pencalonan
-              </Link>
-              .
-            </>
-          ) : (
-            <>
-              Tidak ada lowongan aktif pada kategori Match saat ini. Periksa{" "}
-              <Link href="/karyawan/kecocokan" className="font-semibold underline">
-                kecocokan jabatan
-              </Link>
-              .
-            </>
-          )}
-        </Notice>
+        <ul className="space-y-4">
+          {open.map((m) => {
+            const p = m.position;
+            const block = nominationBlock(e.badge, p.id);
+            const existing = activeNomination(e.badge, p.id);
+            const state = !block
+              ? { chip: "Syarat lengkap", tone: "ok" as const }
+              : existing
+                ? {
+                    chip: existing.source === "Diri sendiri" ? "Sudah Anda ajukan" : "Sudah diajukan atasan langsung",
+                    tone: "brand" as const,
+                  }
+                : { chip: "Belum bisa dicalonkan", tone: "warn" as const };
+            return (
+              <li key={p.id}>
+                <Card className="flex flex-wrap items-center justify-between gap-4 py-5">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-[1.4rem] font-semibold">{p.title}</p>
+                      <CategoryBadge category={m.category} />
+                      <Pill tone={state.tone}>{state.chip}</Pill>
+                    </div>
+                    <p className="mt-1 text-[1.1rem] text-muted">
+                      Unit {p.unit} · Lowongan {p.vacancyCode} · Tutup {p.openUntil ? fmtLong(p.openUntil) : "-"}
+                    </p>
+                  </div>
+                  {!block ? (
+                    <ButtonLink href={`/karyawan/pencalonan?jabatan=${p.id}`}>Calonkan diri →</ButtonLink>
+                  ) : existing ? (
+                    <ButtonLink variant="secondary" href="/karyawan/status">
+                      Lihat status
+                    </ButtonLink>
+                  ) : (
+                    <ButtonLink variant="secondary" href={`/karyawan/kecocokan/${p.id}`}>
+                      Lihat alasannya
+                    </ButtonLink>
+                  )}
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </>
   );

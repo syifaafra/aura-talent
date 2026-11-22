@@ -50,7 +50,7 @@ async function PersetujuanDetail({ params }: { params: Promise<{ id: string }> }
           </Link>
         </Notice>
       ) : (
-        <Notice className="mb-6" tone={approval && isOverdue(p) ? "danger" : "brand"} title={p.stage === "selesai" ? "Persetujuan akhir selesai" : p.stage === "ditolak" ? "Usulan ditolak PIHC" : `Menunggu persetujuan ${STAGE_LABEL[p.stage]}${p.held ? " · Ditahan menunggu wawancara" : ""}`}>
+        <Notice className="mb-6" tone={approval && isOverdue(p) ? "danger" : "brand"} title={p.stage === "selesai" ? "Persetujuan akhir selesai" : p.stage === "ditolak" ? "Usulan ditolak PIHC" : `Menunggu ${["dirut", "pihc"].includes(p.stage) ? "keputusan" : "catatan"} ${STAGE_LABEL[p.stage]}${p.held ? " · Ditahan menunggu wawancara" : ""}`}>
           {approval ? (
             <>
               Masuk tahap ini {fmtDate(p.enteredAt)}
@@ -92,7 +92,7 @@ async function PersetujuanDetail({ params }: { params: Promise<{ id: string }> }
           </Card>
 
           <Card>
-            <CardTitle>Catatan persetujuan</CardTitle>
+            <CardTitle>Catatan Approver</CardTitle>
             {noteStages.length === 0 ? (
               <p className="text-[1.1rem] text-muted">Belum ada catatan dari approver.</p>
             ) : (

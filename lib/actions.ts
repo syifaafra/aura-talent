@@ -250,7 +250,7 @@ export async function submitNomination(_: FormState, fd: FormData): Promise<Form
       return { error: "Anda hanya dapat mencalonkan bawahan langsung." };
   }
   if (justification.length < MIN_JUSTIFICATION)
-    return { error: `Justifikasi minimal ${MIN_JUSTIFICATION} karakter.` };
+    return { error: `Alasan pencalonan wajib diisi, minimal ${MIN_JUSTIFICATION} karakter.` };
   const block = nominationBlock(badge, vacancyId);
   if (block) return { error: block };
 
@@ -381,7 +381,7 @@ export async function submitProposal(_: FormState, fd: FormData): Promise<FormSt
     role: "vp",
     kind: "Usulan baru",
     title: `${proposal.id} · ${proposal.title}`,
-    body: "Menunggu persetujuan VP SDM.",
+    body: "Menunggu catatan VP SDM.",
     at: `${TODAY}T09:00`,
     proposalId: proposal.id,
   });
@@ -464,7 +464,7 @@ function advance(p: ReturnType<typeof getProposal> & object, action: string, not
     role: next as RoleKey,
     kind: "Usulan baru",
     title: `${p.id} · ${p.title}`,
-    body: `Menunggu keputusan ${STAGE_LABEL[next]}.`,
+    body: ["dirut", "pihc"].includes(next) ? `Menunggu keputusan ${STAGE_LABEL[next]}.` : `Menunggu catatan ${STAGE_LABEL[next]}.`,
     at: `${TODAY}T12:00`,
     proposalId: p.id,
   });
@@ -490,8 +490,11 @@ export async function approveForward(_: FormState, fd: FormData): Promise<FormSt
   const ctx = await assertRole("vp", "svp", "direksi1", "direksi2", "direksi3");
   const r = loadForApprover(fd, ctx.role);
   if ("error" in r) return { error: r.error };
+  const missing = r.p.candidates.find((c) => !str(fd, `note-${c.badge}`));
+  if (missing)
+    return { error: `Catatan untuk ${getEmployee(missing.badge)?.name ?? missing.badge} belum diisi.` };
   saveNotes(r.p, r.p.stage, fd);
-  advance(r.p, "Disetujui", "Seluruh kandidat diteruskan");
+  advance(r.p, "Catatan dikirim", "Seluruh kandidat diteruskan");
   refresh();
   redirect("/approver/antrean?disetujui=1");
 }
@@ -508,8 +511,10 @@ export async function selectCandidate(_: FormState, fd: FormData): Promise<FormS
   r.p.notes = r.p.notes.filter((n) => n.stage !== "dirut");
   if (text) r.p.notes.push({ stage: "dirut", badge, text });
   r.p.selectedBadge = badge;
+  r.p.designatedBadge = badge;
+  advance(r.p, "Calon ditetapkan", getEmployee(badge)?.name);
   refresh();
-  redirect(`/approver/usulan/${r.p.id}`);
+  redirect("/approver/antrean?disetujui=1");
 }
 
 export async function designateCandidate(_: FormState, fd: FormData): Promise<FormState> {
@@ -533,9 +538,8 @@ export async function finalApprove(_: FormState, fd: FormData): Promise<FormStat
   if (!e) return { error: "Calon belum ditetapkan." };
 
   if (str(fd, "decision") === "reject") {
-    const reason = str(fd, "reason");
-    if (!reason) return { error: "Alasan penolakan wajib diisi." };
-    r.p.log.push({ at: `${TODAY}T13:00`, stage: "pihc", action: "Ditolak", note: reason });
+    // PIHC only approves or rejects; no note is recorded.
+    r.p.log.push({ at: `${TODAY}T13:00`, stage: "pihc", action: "Ditolak" });
     // Final status "Ditolak PIHC"; only HR and Approvers see the result.
     r.p.stage = "ditolak";
     r.p.enteredAt = TODAY;
@@ -543,7 +547,7 @@ export async function finalApprove(_: FormState, fd: FormData): Promise<FormStat
       role: "hr",
       kind: "Usulan ditolak PIHC",
       title: `${r.p.id} · ${r.p.title}`,
-      body: `PIHC menolak calon ${e.name}: ${reason}`,
+      body: `PIHC menolak calon ${e.name}.`,
       at: `${TODAY}T13:00`,
       proposalId: r.p.id,
     });

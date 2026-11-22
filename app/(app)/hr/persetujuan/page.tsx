@@ -34,7 +34,7 @@ async function PersetujuanList({
       />
       <div className="mb-6 grid gap-6 md:grid-cols-3">
         <Stat value={running.length} label="Usulan berjalan" />
-        <Stat value={running.filter(inApproval).length} label="Menunggu persetujuan" />
+        <Stat value={running.filter(inApproval).length} label="Menunggu Approver" />
         <Stat value={running.filter((p) => inApproval(p) && isOverdue(p)).length} label="Eskalasi SLA" danger={running.some((p) => inApproval(p) && isOverdue(p))} />
       </div>
 

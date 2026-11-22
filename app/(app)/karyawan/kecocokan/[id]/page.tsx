@@ -4,10 +4,10 @@ import { DetailKecocokan } from "./detail";
 
 export const metadata = { title: "Detail kecocokan jabatan · AURA Talent" };
 
-export default function Page({ params }: { params: Promise<{ id: string }> }) {
+export default function Page(props: Parameters<typeof DetailKecocokan>[0]) {
   return (
     <Suspense fallback={<PageFallback title="Detail kecocokan jabatan" />}>
-      <DetailKecocokan params={params} />
+      <DetailKecocokan {...props} />
     </Suspense>
   );
 }

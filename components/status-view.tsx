@@ -1,14 +1,23 @@
 import Link from "next/link";
 import { STAGE_LABEL, fmtDate } from "@/lib/db";
-import type { StatusRow } from "@/lib/queries";
+import { STEP_TOTAL, stepNumber, type StatusRow } from "@/lib/queries";
 import { CompactSteps } from "./proposal-status";
 import { Card, CardTitle, EmptyState, Notice, Stat, Table, Td, Th, cn } from "./ui";
 
-function statusOf(r: StatusRow) {
-  if (r.rejected) return "Ditolak atasan";
+const FINISHED_TEXT = "Proses di sistem selesai · menunggu SK";
+
+/** Karyawan and Atasan never see the final result (NFR-SC-12): PIHC approve and reject look the same. */
+function stageText(r: StatusRow) {
+  if (r.rejected) return "Atasan Langsung";
+  if (r.stage === "selesai" || r.stage === "ditolak") return FINISHED_TEXT;
+  return r.stage === "hr" ? "HR" : STAGE_LABEL[r.stage];
+}
+
+function progressText(r: StatusRow) {
+  if (r.rejected) return "Tidak diteruskan";
   if (r.stage === "selesai" || r.stage === "ditolak") return "Selesai";
-  if (r.stage === "hr") return r.awaitingSupervisor ? "Menunggu persetujuan atasan" : "Diterima HR";
-  return "Menunggu";
+  if (r.stage === "hr") return r.awaitingSupervisor ? "Menunggu tanggapan atasan" : `Tahap 1 dari ${STEP_TOTAL}`;
+  return `Tahap ${stepNumber(r.stage)} dari ${STEP_TOTAL}`;
 }
 
 /** Read-only nomination status for Karyawan (own) and Atasan (direct reports). */
@@ -27,22 +36,20 @@ export function StatusView({
 }) {
   const finished = (r: StatusRow) => r.stage === "selesai" || r.stage === "ditolak";
   const running = rows.filter((r) => !finished(r) && !r.rejected).length;
-  const waiting = rows.filter((r) => !finished(r) && r.stage !== "hr").length;
   const done = rows.filter(finished).length;
   const selected = rows.find((r) => r.key === selectedKey) ?? rows[0];
 
   return (
     <div className="space-y-6">
       {justSent ? (
-        <Notice tone="ok" title="Pencalonan terkirim">
-          HR akan menyusun usulan dari pencalonan ini. Pantau tahapannya di halaman ini.
+        <Notice tone="ok" title={mode === "karyawan" ? "Pencalonan terkirim ke atasan langsung" : "Pencalonan terkirim ke HR"}>
+          Pantau tahapannya di halaman ini. Keputusan akhir disampaikan melalui SK.
         </Notice>
       ) : null}
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Stat value={running} label="Pencalonan berjalan" />
-        <Stat value={waiting} label="Menunggu persetujuan" />
-        <Stat value={done} label="Selesai" />
+      <div className="grid gap-6 md:grid-cols-2">
+        <Stat value={running} label="Sedang berjalan" />
+        <Stat value={done} label="Proses selesai" />
       </div>
 
       {rows.length === 0 ? (
@@ -62,7 +69,7 @@ export function StatusView({
                   {mode === "atasan" ? <Th>Karyawan</Th> : <Th>Sumber</Th>}
                   <Th>Pengajuan</Th>
                   <Th>Tahap saat ini</Th>
-                  <Th>Status</Th>
+                  <Th>Progres</Th>
                 </tr>
               </thead>
               <tbody>
@@ -79,10 +86,8 @@ export function StatusView({
                     <Td>{r.title}</Td>
                     <Td>{mode === "atasan" ? r.name : r.source}</Td>
                     <Td>{fmtDate(r.date)}</Td>
-                    <Td className="font-semibold text-brand">
-                      {r.rejected ? "Atasan Langsung" : r.stage === "hr" ? "HR" : STAGE_LABEL[r.stage]}
-                    </Td>
-                    <Td className="font-semibold text-brand">{statusOf(r)}</Td>
+                    <Td className="font-semibold text-brand">{stageText(r)}</Td>
+                    <Td className="text-muted">{progressText(r)}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -116,7 +121,8 @@ export function StatusView({
               </p>
               <h3 className="mt-6 text-[1.2rem] font-semibold">Catatan proses</h3>
               <p className="mt-2 text-[1.1rem] leading-relaxed text-muted">
-                Keputusan promosi mengikuti persetujuan berjenjang. Status menunggu bukan berarti pencalonan ditolak.
+                Halaman ini satu-satunya tempat memantau tahapan; tidak ada notifikasi perubahan tahap. Keputusan akhir
+                diketahui saat SK diterbitkan di luar sistem.
               </p>
             </Card>
           </div>

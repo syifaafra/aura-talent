@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { PageFallback } from "@/components/page-fallback";
-import { MatchList, parseTab } from "@/components/match-list";
+import { MatchList, parseFilter } from "@/components/match-list";
 import { NoProfile, SummaryCards, UndeterminedView, profileLine } from "@/components/profile";
 import { PageHeader } from "@/components/ui";
-import { isCategoryDeterminable, matchesFor } from "@/lib/queries";
+import { isCategoryDeterminable } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Dashboard · AURA Talent" };
@@ -31,12 +31,11 @@ async function KaryawanDasbor({
       <PageHeader title="Dashboard" subtitle={profileLine(e)} />
       <SummaryCards e={e} />
       <MatchList
-        rows={matchesFor(e)}
-        tab={parseTab(sp.tab)}
-        q={typeof sp.q === "string" ? sp.q : ""}
+        e={e}
+        filter={parseFilter(sp.kategori)}
         basePath="/karyawan"
-        unit={e.unit}
-        detailBase="/karyawan/kecocokan"
+        detailHref={(r) => `/karyawan/kecocokan/${r.position.id}`}
+        scope="Jabatan satu level di atas jabatan Anda, dalam rumpun yang sama dengan jabatan kini atau riwayat jabatan Anda."
       />
     </>
   );
