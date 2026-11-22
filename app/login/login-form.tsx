@@ -21,6 +21,8 @@ const DEMO = [
   ["pihc", "PIHC"],
 ];
 
+const OTHER_EMPLOYEES = ["bhima", "sari", "lukman", "diandra", "maya", "fajar", "citra", "andi"];
+
 export function LoginForm() {
   const [state, action] = useActionState<FormState, FormData>(login, {});
   const [show, setShow] = useState(false);
@@ -88,10 +90,13 @@ export function LoginForm() {
           ))}
         </ul>
         <p className="mt-2">
-          Karyawan lain: <code className="rounded bg-white px-1">bhima</code>,{" "}
-          <code className="rounded bg-white px-1">sari</code>,{" "}
-          <code className="rounded bg-white px-1">lukman</code>,{" "}
-          <code className="rounded bg-white px-1">diandra</code>.
+          Karyawan lain:{" "}
+          {OTHER_EMPLOYEES.map((u, i) => (
+            <span key={u}>
+              <code className="rounded bg-white px-1">{u}</code>
+              {i < OTHER_EMPLOYEES.length - 1 ? ", " : "."}
+            </span>
+          ))}
         </p>
       </details>
     </form>
