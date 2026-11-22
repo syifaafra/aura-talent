@@ -45,8 +45,8 @@ async function RiwayatPage({
             {latest.id} · {latest.title}
           </h2>
           <p className="mt-2 text-[1.25rem] text-muted">
-            {chosenName ? `Pilihan Direksi 1: ${chosenName} · ` : ""}
-            Tahap berikutnya: {STAGE_LABEL[latest.stage]}
+            {chosenName ? `Pilihan Direktur Utama: ${chosenName} · ` : ""}
+            {latest.stage === "selesai" || latest.stage === "ditolak" ? "Status" : "Tahap berikutnya"}: {STAGE_LABEL[latest.stage]}
           </p>
         </Card>
       ) : null}

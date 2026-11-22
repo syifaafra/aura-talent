@@ -7,13 +7,11 @@ import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, CardTitle, Notice, PageHeader, buttonClass, DisabledButton } from "@/components/ui";
 import {
   approveForward,
-  approveSelected,
   designateCandidate,
   finalApprove,
   requestInterview,
 } from "@/lib/actions";
 import {
-  ROLE_LABEL,
   STAGE_LABEL,
   db,
   fmtDate,
@@ -136,8 +134,8 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
-  /* ------------------------------- VP SDM / SVP SDM ------------------------------- */
-  if (role === "vp" || role === "svp") {
+  /* -------------------- VP SDM, SVP SDM, Direksi 1, 2, and 3 -------------------- */
+  if (role === "vp" || role === "svp" || role === "direksi1" || role === "direksi2" || role === "direksi3") {
     return (
       <>
         <Header p={p} role={role} />
@@ -185,160 +183,65 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
-  /* ------------------------------------ Direksi 1 ------------------------------------ */
-  if (role === "direksi1") {
-    const interview = db().interviews.find((i) => i.proposalId === p.id);
-    const candidates: PickerCandidate[] = p.candidates.map((c) => {
-      const { e, rec, notes } = candidateInfo(p, c.badge);
-      const slot = interview?.slots.find((s) => s.badge === c.badge);
-      return {
-        badge: e.badge,
-        name: e.name,
-        position: e.position,
-        score: rec?.score,
-        category: categoryFor(p.vacancyId, c.badge),
-        kpi: "KPI 2024 & 2025: Tercapai",
-        assessment: `Asesmen: ${e.assessment?.result ?? "-"}`,
-        track: e.strengths || rec?.reason || "-",
-        development: rec?.gap ? rec.gap.charAt(0).toUpperCase() + rec.gap.slice(1) : "-",
-        interview: slot ? `Dijadwalkan ${interview!.date} ${slot.start} WIB` : "Belum dijadwalkan",
-        notes: notes.map((n) => ({ label: n.label, text: n.text })),
-      };
-    });
-    return (
-      <>
-        <PageHeader
-          title="Pilih kandidat untuk promosi"
-          subtitle={`${p.id} · ${p.title} · ${p.candidates.length} kandidat`}
-          back={
-            <Link href="/approver/antrean" className="hover:underline">
-              Daftar usulan / Perbandingan kandidat
-            </Link>
-          }
-          action={
-            <form action={requestInterview}>
-              <input type="hidden" name="proposalId" value={p.id} />
-              <button type="submit" className={buttonClass("secondary")}>
-                Jadwalkan wawancara
-              </button>
-            </form>
-          }
-        />
-        <CandidatePicker proposalId={p.id} candidates={candidates} />
-      </>
-    );
-  }
-
-  /* --------------------------------- Direksi 2 / 3 --------------------------------- */
-  const selected = p.selectedBadge ? candidateInfo(p, p.selectedBadge) : undefined;
-  const others = p.candidates.filter((c) => c.badge !== p.selectedBadge);
-  const approvals = p.log.filter((l) => ["direksi1", "direksi2", "direksi3"].includes(l.stage));
-
-  const selectedCard = selected ? (
-    <Card>
-      <p className="text-sm font-semibold uppercase tracking-wide text-brand">Kandidat terpilih</p>
-      <h2 className="mt-2 text-[2rem] font-semibold">{selected.e.name}</h2>
-      <p className="mt-3 text-[2.1rem] font-semibold text-brand">
-        {selected.rec ? `${selected.rec.score} / 100 · ` : ""}{categoryFor(p.vacancyId, selected.e.badge)}
-      </p>
-      <p className="mt-3 text-[1.25rem] font-semibold text-ok">Syarat wajib memenuhi</p>
-      <p className="mt-2 text-[1.2rem] leading-relaxed">
-        KPI 2024 &amp; 2025: Tercapai
-        <br />
-        Asesmen: {selected.e.assessment?.result}
-        <br />
-        Rekam jejak: {selected.e.strengths}
-      </p>
-      <h3 className="mt-5 text-[1.2rem] font-semibold">Area pengembangan</h3>
-      <p className="text-[1.15rem] text-muted">{selected.rec?.gap ?? "-"}</p>
-    </Card>
-  ) : null;
-
-  const comparators = (
-    <Card>
-      <CardTitle>Kandidat pembanding</CardTitle>
-      <p className="text-[1.2rem] text-muted">
-        {others
-          .map((c) => {
-            const r = recommendationFor(p.vacancyId, c.badge);
-            return `${getEmployee(c.badge)?.name}${r ? ` · ${r.score} / 100` : ""}`;
-          })
-          .join("      ") || "Tidak ada kandidat pembanding."}
-      </p>
-    </Card>
-  );
-
-  if (!selected) {
-    return (
-      <>
-        <Header p={p} role={role} />
-        <Notice tone="warn" title="Belum ada kandidat pilihan Direksi 1">
-          Usulan tidak dapat diproses sebelum Direksi 1 memilih kandidat.
-        </Notice>
-      </>
-    );
-  }
-
-  if (role === "direksi2" || role === "direksi3") {
-    return (
-      <>
-        <PageHeader
-          title="Persetujuan calon pilihan"
-          subtitle={`${p.id} · ${p.title} · Calon pilihan Direksi 1: ${selected.e.name}`}
-          back={
-            <Link href="/approver/antrean" className="hover:underline">
-              ← Daftar usulan
-            </Link>
-          }
-        />
-        <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-          {selectedCard}
-          <Card tone="soft">
-            <h2 className="mb-3 text-[1.6rem] font-semibold text-brand">Persetujuan sebelumnya</h2>
-            <ul className="space-y-3 text-[1.15rem]">
-              {approvals.map((l) => (
-                <li key={l.stage}>
-                  <p className="font-semibold text-ok">
-                    {STAGE_LABEL[l.stage as Stage]} · {l.action}
-                  </p>
-                  <p className="text-muted">{l.note}</p>
-                </li>
-              ))}
-            </ul>
-            {p.notes
-              .filter((n) => n.badge === selected.e.badge)
-              .map((n) => (
-                <p key={n.stage} className="mt-3 text-base">
-                  <span className="font-semibold text-brand">{STAGE_LABEL[n.stage]}:</span> {n.text}
-                </p>
-              ))}
-          </Card>
-        </div>
-        <div className="mt-6">{comparators}</div>
-        <ActionForm action={approveSelected} className="mt-6">
-          {hidden}
-          <label htmlFor="note" className="mb-1.5 block text-base font-medium text-muted">
-            Catatan {ROLE_LABEL[role]} (opsional)
-          </label>
-          <textarea
-            id="note"
-            name="note"
-            rows={2}
-            className="w-full rounded-lg border border-line bg-white px-4 py-3 text-[1.1rem] focus:border-brand"
-          />
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-            <Link href="/approver/antrean" className="font-semibold text-brand hover:underline">
-              Kembali ke daftar usulan
-            </Link>
-            <SubmitButton pendingText="Menyimpan…">Setujui calon pilihan</SubmitButton>
-          </div>
-        </ActionForm>
-      </>
-    );
-  }
-
   /* ---------------------------------- Direktur Utama ---------------------------------- */
   if (role === "dirut") {
+    const heldNotice = p.held ? (
+      <Notice tone="warn" title="Usulan ditahan" className="mb-6">
+        Direktur Utama meminta wawancara kandidat. Pemilihan dilanjutkan setelah HR mengunggah hasil wawancara seluruh
+        kandidat.
+      </Notice>
+    ) : null;
+
+    // Step 1: compare the candidates side by side and choose one.
+    if (!p.selectedBadge) {
+      const interview = db().interviews.find((i) => i.proposalId === p.id);
+      const candidates: PickerCandidate[] = p.candidates.map((c) => {
+        const { e, rec, notes } = candidateInfo(p, c.badge);
+        const slot = interview?.slots.find((s) => s.badge === c.badge);
+        return {
+          badge: e.badge,
+          name: e.name,
+          position: e.position,
+          score: rec?.score,
+          category: categoryFor(p.vacancyId, c.badge),
+          kpi: "KPI 2024 & 2025: Tercapai",
+          assessment: `Asesmen: ${e.assessment?.result ?? "-"}`,
+          track: e.strengths || rec?.reason || "-",
+          development: rec?.gap ? rec.gap.charAt(0).toUpperCase() + rec.gap.slice(1) : "-",
+          interview: slot ? `Dijadwalkan ${interview!.date} ${slot.start} WIB` : "Belum dijadwalkan",
+          notes: notes.map((n) => ({ label: n.label, text: n.text })),
+        };
+      });
+      return (
+        <>
+          <PageHeader
+            title="Pilih kandidat untuk promosi"
+            subtitle={`${p.id} · ${p.title} · ${p.candidates.length} kandidat`}
+            back={
+              <Link href="/approver/antrean" className="hover:underline">
+                Daftar usulan / Perbandingan kandidat
+              </Link>
+            }
+            action={
+              p.held ? null : (
+                <form action={requestInterview}>
+                  <input type="hidden" name="proposalId" value={p.id} />
+                  <button type="submit" className={buttonClass("secondary")}>
+                    Jadwalkan wawancara
+                  </button>
+                </form>
+              )
+            }
+          />
+          {heldNotice}
+          <CandidatePicker proposalId={p.id} candidates={candidates} disabled={p.held} />
+        </>
+      );
+    }
+
+    // Step 2: designate the chosen candidate and forward to PIHC.
+    const selected = candidateInfo(p, p.selectedBadge);
+    const others = p.candidates.filter((c) => c.badge !== p.selectedBadge);
     return (
       <>
         <PageHeader
@@ -350,33 +253,67 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
             </Link>
           }
         />
+        {heldNotice}
         <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-          {selectedCard}
+          <Card>
+            <p className="text-sm font-semibold uppercase tracking-wide text-brand">Kandidat terpilih</p>
+            <h2 className="mt-2 text-[2rem] font-semibold">{selected.e.name}</h2>
+            <p className="mt-3 text-[2.1rem] font-semibold text-brand">
+              {selected.rec ? `${selected.rec.score} / 100 · ` : ""}{categoryFor(p.vacancyId, selected.e.badge)}
+            </p>
+            <p className="mt-3 text-[1.25rem] font-semibold text-ok">Syarat wajib memenuhi</p>
+            <p className="mt-2 text-[1.2rem] leading-relaxed">
+              KPI 2024 &amp; 2025: Tercapai
+              <br />
+              Asesmen: {selected.e.assessment?.result}
+              <br />
+              Rekam jejak: {selected.e.strengths}
+            </p>
+            <h3 className="mt-5 text-[1.2rem] font-semibold">Area pengembangan</h3>
+            <p className="text-[1.15rem] text-muted">{selected.rec?.gap ?? "-"}</p>
+          </Card>
           <Card tone="soft">
             <h2 className="mb-4 text-[1.6rem] font-semibold text-brand">Persetujuan Direksi</h2>
             <ul className="space-y-5">
               {(["direksi1", "direksi2", "direksi3"] as const).map((s) => {
                 const l = p.log.find((x) => x.stage === s);
+                const note = p.notes.find((n) => n.stage === s && n.badge === selected.e.badge);
                 return (
                   <li key={s}>
                     <p className={`text-[1.3rem] font-semibold ${l ? "text-ok" : "text-muted"}`}>
                       {STAGE_LABEL[s]} · {l ? "Disetujui" : "Menunggu"}
                     </p>
-                    <p className="text-[1.1rem] text-muted">Calon pilihan: {selected.e.name}</p>
+                    <p className="text-[1.1rem] text-muted">{note ? note.text : (l?.note ?? "")}</p>
                   </li>
                 );
               })}
             </ul>
           </Card>
         </div>
-        <div className="mt-6">{comparators}</div>
+        <div className="mt-6">
+          <Card>
+            <CardTitle>Kandidat pembanding</CardTitle>
+            <p className="text-[1.2rem] text-muted">
+              {others
+                .map((c) => {
+                  const r = recommendationFor(p.vacancyId, c.badge);
+                  return `${getEmployee(c.badge)?.name}${r ? ` · ${r.score} / 100` : ""}`;
+                })
+                .join("      ") || "Tidak ada kandidat pembanding."}
+            </p>
+          </Card>
+        </div>
         <ActionForm action={designateCandidate} className="mt-6">
           {hidden}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <Link href="/approver/antrean" className="font-semibold text-brand hover:underline">
               Kembali ke daftar usulan
             </Link>
-            <SubmitButton pendingText="Menetapkan…">Tetapkan calon &amp; lanjutkan</SubmitButton>
+            {p.held ? (
+              <DisabledButton>Tetapkan calon &amp; lanjutkan</DisabledButton>
+            ) : (
+              <SubmitButton pendingText="Menetapkan…">Tetapkan calon &amp; lanjutkan</SubmitButton>
+            )}
           </div>
         </ActionForm>
       </>
@@ -384,7 +321,8 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
   }
 
   /* ------------------------------------- PIHC ------------------------------------- */
-  const designated = getEmployee(p.designatedBadge) ?? selected.e;
+  const designated = getEmployee(p.designatedBadge ?? p.selectedBadge);
+  if (!designated) notFound();
   const complete = documentsComplete(designated);
   const pending = pendingDocuments(designated);
   return (

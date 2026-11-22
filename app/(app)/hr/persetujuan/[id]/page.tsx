@@ -50,7 +50,7 @@ async function PersetujuanDetail({ params }: { params: Promise<{ id: string }> }
           </Link>
         </Notice>
       ) : (
-        <Notice className="mb-6" tone={approval && isOverdue(p) ? "danger" : "brand"} title={p.stage === "selesai" ? "Persetujuan akhir selesai" : `Menunggu persetujuan ${STAGE_LABEL[p.stage]}`}>
+        <Notice className="mb-6" tone={approval && isOverdue(p) ? "danger" : "brand"} title={p.stage === "selesai" ? "Persetujuan akhir selesai" : p.stage === "ditolak" ? "Usulan ditolak PIHC" : `Menunggu persetujuan ${STAGE_LABEL[p.stage]}${p.held ? " · Ditahan menunggu wawancara" : ""}`}>
           {approval ? (
             <>
               Masuk tahap ini {fmtDate(p.enteredAt)}
@@ -59,7 +59,7 @@ async function PersetujuanDetail({ params }: { params: Promise<{ id: string }> }
               <span className="sr-only"> (SLA {SLA_DAYS} hari, {addDays(p.enteredAt, SLA_DAYS)})</span>
             </>
           ) : (
-            "Seluruh tahapan persetujuan telah selesai."
+            p.stage === "ditolak" ? `Penolakan ${last ? fmtDateTime(last.at) : ""}${last?.note ? ` · Alasan: ${last.note}` : ""}` : "Seluruh tahapan persetujuan telah selesai."
           )}
         </Notice>
       )}

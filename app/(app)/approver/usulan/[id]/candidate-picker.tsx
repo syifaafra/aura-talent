@@ -101,7 +101,7 @@ export function CandidatePicker({
 
         <div className="mt-6">
           <label htmlFor="note" className="mb-1.5 block text-base font-medium text-muted">
-            Catatan Direksi 1 untuk kandidat terpilih (opsional)
+            Catatan Direktur Utama untuk kandidat terpilih (opsional)
           </label>
           <textarea
             id="note"

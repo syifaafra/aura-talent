@@ -7,6 +7,7 @@ import { Card, CardTitle, EmptyState, Notice, PageHeader, inputClass } from "@/c
 import { respondNomination } from "@/lib/actions";
 import { db, fmtDate, fmtLong } from "@/lib/db";
 import {
+  categoryFor,
   checklist,
   eligibleVacancies,
   getPosition,
@@ -93,15 +94,21 @@ async function PencalonanBawahan({
                   </p>
                   <p className="text-[1.05rem] text-muted">
                     {who.badge} · Diajukan {fmtDate(n.at)} ·{" "}
-                    <span className="font-semibold text-brand">{n.response ?? "Belum direspons"}</span>
+                    <span className="font-semibold text-brand">{n.response ?? "Menunggu persetujuan atasan"}</span>
                   </p>
                   <p className="mt-2 text-[1.1rem] leading-relaxed">{n.justification}</p>
+                  <p className="mt-1 text-base text-muted">
+                    Kategori {categoryFor(n.vacancyId, n.badge)} ·{" "}
+                    {pendingDocuments(who).length === 0
+                      ? "Syarat wajib memenuhi"
+                      : `Menunggu: ${pendingDocuments(who).join(", ").toLowerCase().replace("lhkpn", "LHKPN")}`}
+                  </p>
                   {locked ? (
                     <p className="mt-2 text-base text-muted">Usulan {locked} sudah dikirim.</p>
                   ) : n.response ? (
                     n.response === "Ditolak" ? (
                       <p className="mt-2 text-base text-muted">
-                        {n.responseNote ? `Catatan: ${n.responseNote}. ` : ""}HR masih dapat mengajukan karyawan ini dari
+                        {n.responseNote ? `Alasan: ${n.responseNote}. ` : ""}HR masih dapat mengajukan karyawan ini dari
                         rekomendasi.
                       </p>
                     ) : null
@@ -114,7 +121,7 @@ async function PencalonanBawahan({
                       <input
                         id={`note-${n.id}`}
                         name="note"
-                        placeholder="Catatan (opsional)"
+                        placeholder="Alasan penolakan (wajib bila menolak)"
                         className={`${inputClass} mb-3 max-w-xl`}
                       />
                       <div className="flex gap-3">

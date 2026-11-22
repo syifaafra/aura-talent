@@ -187,7 +187,7 @@ export function inApproval(p: Proposal) {
 }
 
 export function activeProposals() {
-  return db().proposals.filter((p) => p.stage !== "selesai");
+  return db().proposals.filter((p) => p.stage !== "selesai" && p.stage !== "ditolak");
 }
 
 export function queueFor(role: RoleKey): Proposal[] {
@@ -290,6 +290,8 @@ export interface StatusRow {
   proposal?: Proposal;
   /** Self-nomination rejected by the Atasan Langsung. */
   rejected?: boolean;
+  /** Reason given by the Atasan Langsung when rejecting. */
+  rejectNote?: string;
   /** Self-nomination still waiting for the Atasan Langsung. */
   awaitingSupervisor?: boolean;
 }
@@ -330,6 +332,7 @@ export function statusRows(badges: string[]): StatusRow[] {
         date: n.at,
         stage: "hr",
         rejected: n.response === "Ditolak",
+        rejectNote: n.responseNote,
         awaitingSupervisor: awaitingSupervisor(n),
       });
     }

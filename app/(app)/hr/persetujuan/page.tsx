@@ -8,7 +8,7 @@ import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Status persetujuan · AURA Talent" };
 
-const FILTERS: Stage[] = ["draft", "vp", "svp", "direksi1", "direksi2", "direksi3", "dirut", "pihc"];
+const FILTERS: Stage[] = ["draft", "vp", "svp", "direksi1", "direksi2", "direksi3", "dirut", "pihc", "ditolak"];
 
 async function PersetujuanList({
   searchParams,

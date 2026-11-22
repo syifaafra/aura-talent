@@ -11,7 +11,7 @@ import { cn } from "./ui";
 type StepState = "done" | "current" | "next";
 
 export function stepState(p: Proposal, stage: Stage): StepState {
-  if (p.stage === "selesai") return "done";
+  if (p.stage === "selesai" || p.stage === "ditolak") return "done";
   if (p.stage === "draft") return "next";
   const cur = APPROVAL_STAGES.indexOf(p.stage);
   const idx = APPROVAL_STAGES.indexOf(stage);
@@ -27,8 +27,9 @@ const STATE_TEXT: Record<StepState, string> = {
 /** Compact read-only view for Karyawan and Atasan (no other candidates' data). */
 export function CompactSteps({ proposal }: { proposal: Proposal }) {
   const idx = APPROVAL_STAGES.indexOf(proposal.stage);
-  const visible = proposal.stage === "selesai" ? APPROVAL_STAGES : APPROVAL_STAGES.slice(0, Math.max(idx, 0) + 1);
-  const rest = proposal.stage === "selesai" ? [] : APPROVAL_STAGES.slice(idx + 1);
+  const finished = proposal.stage === "selesai" || proposal.stage === "ditolak";
+  const visible = finished ? APPROVAL_STAGES : APPROVAL_STAGES.slice(0, Math.max(idx, 0) + 1);
+  const rest = finished ? [] : APPROVAL_STAGES.slice(idx + 1);
   return (
     <div>
       <ul className="space-y-2">
@@ -39,7 +40,7 @@ export function CompactSteps({ proposal }: { proposal: Proposal }) {
         {visible.map((s) => {
           const st = stepState(proposal, s);
           // Karyawan and Atasan never see the final result, only that the stage was processed.
-          const text = proposal.stage === "selesai" && s === "pihc" ? "Selesai diproses" : STATE_TEXT[st];
+          const text = finished && s === "pihc" ? "Selesai diproses" : STATE_TEXT[st];
           return (
             <li
               key={s}
@@ -65,7 +66,7 @@ export function CompactSteps({ proposal }: { proposal: Proposal }) {
 
 /** Numbered timeline used by HR (W-35). */
 export function Timeline({ proposal }: { proposal: Proposal }) {
-  // Latest entry wins: a stage can run again after PIHC returns the proposal.
+  // Latest log entry of a stage.
   const logOf = (stage: Stage | "hr") => [...proposal.log].reverse().find((l) => l.stage === stage);
   const steps: Array<{ key: Stage | "hr"; label: string; task: string; st: StepState }> = [
     { key: "hr", label: "HR · Usulan dikirim", task: "", st: "done" },
@@ -107,7 +108,7 @@ export function Timeline({ proposal }: { proposal: Proposal }) {
               >
                 {s.key === "hr" || s.st === "next"
                   ? s.label
-                  : `${s.label} · ${s.st === "done" ? "Disetujui" : "Menunggu"}`}
+                  : `${s.label} · ${s.key === "pihc" && proposal.stage === "ditolak" ? "Ditolak" : s.st === "done" ? "Disetujui" : "Menunggu"}`}
               </p>
               <p className="text-base text-muted">{detail}</p>
             </div>

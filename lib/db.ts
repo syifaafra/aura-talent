@@ -56,7 +56,9 @@ export type Stage =
   | "direksi3"
   | "dirut"
   | "pihc"
-  | "selesai";
+  | "selesai"
+  /** Rejected by PIHC (final). */
+  | "ditolak";
 
 export const APPROVAL_STAGES: Stage[] = [
   "vp",
@@ -78,18 +80,20 @@ export const STAGE_LABEL: Record<Stage, string> = {
   dirut: "Direktur Utama",
   pihc: "PIHC",
   selesai: "Selesai",
+  ditolak: "Ditolak PIHC",
 };
 
 export const STAGE_TASK: Record<Stage, string> = {
   draft: "Menyusun usulan",
   vp: "Persetujuan usulan",
   svp: "Persetujuan usulan",
-  direksi1: "Pemilihan kandidat",
-  direksi2: "Persetujuan kandidat",
-  direksi3: "Persetujuan kandidat",
-  dirut: "Penetapan calon",
+  direksi1: "Persetujuan usulan",
+  direksi2: "Persetujuan usulan",
+  direksi3: "Persetujuan usulan",
+  dirut: "Pemilihan dan penetapan calon",
   pihc: "Persetujuan akhir · Kelengkapan persyaratan",
   selesai: "Usulan selesai",
+  ditolak: "Usulan ditolak PIHC",
 };
 
 export interface User {
@@ -179,6 +183,8 @@ export interface Proposal {
   notes: Note[];
   selectedBadge?: string;
   designatedBadge?: string;
+  /** "Ditahan": Direktur Utama asked for an interview; resumes once the results are on file. */
+  held?: boolean;
   hrNote: string;
 }
 
@@ -663,6 +669,8 @@ function createSeed(): Store {
         ["P-MPJ", "Manajer Penjualan", "Jabatan Q", "Pemasaran"],
         ["P-MGD", "Manajer Gudang", "Jabatan R", "Logistik"],
         ["P-MAK", "Manajer Akuntansi", "Jabatan S", "Keuangan"],
+        ["P-MPL", "Manajer Pelatihan", "Jabatan T", "SDM"],
+        ["P-MAD", "Manajer Administrasi", "Jabatan U", "Umum"],
       ] as const
     ).map(
       ([id, title, label, unit]): Position => ({
@@ -805,6 +813,50 @@ function createSeed(): Store {
       },
     ],
     "P-MQ": [],
+    "P-MSP": [
+      {
+        badge: "000009",
+        score: 88,
+        reason: "Pengalaman produksi dan konsistensi capaian KPI",
+        gap: "perencanaan strategis",
+        change: "baru",
+        indicators: { asesmen: 88, kinerja: 90, riwayat: 86, pendidikan: 84 },
+      },
+      {
+        badge: "000001",
+        score: 76,
+        reason: "Pengalaman produksi lintas lini",
+        gap: "perencanaan produksi",
+        change: "baru",
+        indicators: { asesmen: 78, kinerja: 80, riwayat: 74, pendidikan: 72 },
+      },
+    ],
+    "P-MPJ": [
+      {
+        badge: "000012",
+        score: 91,
+        reason: "Kinerja unggul dua tahun berturut-turut",
+        gap: "pengalaman pemasaran",
+        change: "baru",
+        indicators: { asesmen: 92, kinerja: 95, riwayat: 88, pendidikan: 90 },
+      },
+      {
+        badge: "000004",
+        score: 86,
+        reason: "Kinerja dan asesmen kuat",
+        gap: "pengalaman pemasaran",
+        change: "baru",
+        indicators: { asesmen: 88, kinerja: 88, riwayat: 82, pendidikan: 86 },
+      },
+      {
+        badge: "000001",
+        score: 78,
+        reason: "Pengalaman produksi lintas lini",
+        gap: "pengalaman pemasaran",
+        change: "baru",
+        indicators: { asesmen: 80, kinerja: 82, riwayat: 76, pendidikan: 74 },
+      },
+    ],
     // Predicted vacancy whose lowongan HR has not opened: HR may still propose it closed.
     "P-SPM": [
       {
@@ -937,9 +989,9 @@ function createSeed(): Store {
           { at: "2026-11-20T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
           { at: "2026-11-21T10:30", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-23T14:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-26T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Bhima Adiputra" },
-          { at: "2026-11-28T11:15", stage: "direksi2", action: "Disetujui", note: "Calon pilihan: Bhima Adiputra" },
-          { at: "2026-11-30T09:45", stage: "direksi3", action: "Disetujui", note: "Calon pilihan: Bhima Adiputra" },
+          { at: "2026-11-26T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-28T11:15", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-30T09:45", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-12-03T10:00", stage: "dirut", action: "Calon ditetapkan", note: "Bhima Adiputra" },
         ],
         [
@@ -970,13 +1022,14 @@ function createSeed(): Store {
       ],
       [{ stage: "vp", badge: "000012", text: "Kinerja unggul; pertimbangkan penugasan lintas unit." }],
     ),
-    // U-2026-010 · back at Direksi 1 after PIHC rejected the designated candidate.
-    mk(
+    // U-2026-010 · rejected by PIHC (final status "Ditolak PIHC").
+    {
+      ...mk(
       "U-2026-010",
       "P-MPM",
       "Manajer Pemeliharaan",
       "2026-11-22",
-      "direksi1",
+      "ditolak",
       "2026-12-04",
       [
         { badge: "000002", source: "HR (Rekomendasi)" },
@@ -987,9 +1040,9 @@ function createSeed(): Store {
         { at: "2026-11-22T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
         { at: "2026-11-23T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
         { at: "2026-11-25T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-        { at: "2026-11-27T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Andi Saputra" },
-        { at: "2026-11-29T10:00", stage: "direksi2", action: "Disetujui", note: "Calon pilihan: Andi Saputra" },
-        { at: "2026-12-01T10:00", stage: "direksi3", action: "Disetujui", note: "Calon pilihan: Andi Saputra" },
+        { at: "2026-11-27T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-29T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-01T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
         { at: "2026-12-02T10:00", stage: "dirut", action: "Calon ditetapkan", note: "Andi Saputra" },
         {
           at: "2026-12-04T13:00",
@@ -999,15 +1052,18 @@ function createSeed(): Store {
         },
       ],
       [{ stage: "vp", badge: "000013", text: "Dokumen persyaratan masih perlu dilengkapi." }],
-    ),
-    // U-2026-011 · Direksi 2, one day left, interview already scheduled.
+      ),
+      selectedBadge: "000013",
+      designatedBadge: "000013",
+    },
+    // U-2026-011 · Direktur Utama, "Ditahan" while the requested interview is pending.
     {
       ...mk(
         "U-2026-011",
         "P-MK3",
         "Manajer K3",
         "2026-11-25",
-        "direksi2",
+        "dirut",
         "2026-12-03",
         [
           { badge: "000009", source: "Diri sendiri" },
@@ -1018,11 +1074,13 @@ function createSeed(): Store {
           { at: "2026-11-25T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
           { at: "2026-11-26T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-28T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-12-03T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Rizky Pratama" },
+          { at: "2026-11-29T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-30T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
         ],
         [{ stage: "direksi1", badge: "000009", text: "Konsistensi KPI dan pengalaman lini produksi sesuai kebutuhan." }],
       ),
-      selectedBadge: "000009",
+      held: true,
     },
     // U-2026-012 · Direksi 3, overdue by 3 days.
     {
@@ -1042,11 +1100,10 @@ function createSeed(): Store {
           { at: "2026-11-20T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
           { at: "2026-11-22T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-24T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-27T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Lukman Hakim" },
-          { at: "2026-11-29T10:00", stage: "direksi2", action: "Disetujui", note: "Calon pilihan: Lukman Hakim" },
+          { at: "2026-11-27T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-29T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
         ],
       ),
-      selectedBadge: "000004",
     },
     // U-2026-013 · Dirut designates.
     {
@@ -1066,12 +1123,17 @@ function createSeed(): Store {
           { at: "2026-11-24T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
           { at: "2026-11-25T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-27T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-30T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Citra Lestari" },
-          { at: "2026-12-02T10:00", stage: "direksi2", action: "Disetujui", note: "Calon pilihan: Citra Lestari" },
-          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Calon pilihan: Citra Lestari" },
+          { at: "2026-11-30T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-02T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        ],
+        [
+          { stage: "vp", badge: "000012", text: "Kinerja unggul; pertimbangkan penugasan lintas unit." },
+          { stage: "vp", badge: "000004", text: "Perlu pengalaman pemasaran sebagai pengembangan." },
+          { stage: "svp", badge: "000012", text: "Lanjutkan verifikasi. Perkuat pengalaman pemasaran." },
+          { stage: "direksi1", badge: "000001", text: "Pengalaman produksi dapat mendukung perencanaan penjualan." },
         ],
       ),
-      selectedBadge: "000012",
     },
     // U-2026-014 · PIHC, designated candidate has NO documents (approval must be blocked).
     {
@@ -1091,9 +1153,9 @@ function createSeed(): Store {
           { at: "2026-11-24T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
           { at: "2026-11-25T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-27T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-30T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Andi Saputra" },
-          { at: "2026-12-02T10:00", stage: "direksi2", action: "Disetujui", note: "Calon pilihan: Andi Saputra" },
-          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Calon pilihan: Andi Saputra" },
+          { at: "2026-11-30T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-02T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-12-03T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-12-04T09:00", stage: "dirut", action: "Calon ditetapkan", note: "Andi Saputra" },
         ],
       ),
@@ -1118,9 +1180,9 @@ function createSeed(): Store {
           { at: "2026-11-05T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
           { at: "2026-11-07T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-10T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
-          { at: "2026-11-12T10:00", stage: "direksi1", action: "Disetujui", note: "Pilihan: Citra Lestari" },
-          { at: "2026-11-14T10:00", stage: "direksi2", action: "Disetujui", note: "Calon pilihan: Citra Lestari" },
-          { at: "2026-11-16T10:00", stage: "direksi3", action: "Disetujui", note: "Calon pilihan: Citra Lestari" },
+          { at: "2026-11-12T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-14T10:00", stage: "direksi2", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+          { at: "2026-11-16T10:00", stage: "direksi3", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
           { at: "2026-11-17T10:00", stage: "dirut", action: "Calon ditetapkan", note: "Citra Lestari" },
           { at: "2026-11-18T13:00", stage: "pihc", action: "Persetujuan akhir", note: "Citra Lestari" },
         ],
@@ -1129,6 +1191,46 @@ function createSeed(): Store {
       selectedBadge: "000012",
       designatedBadge: "000012",
     },
+    // U-2026-016 · Direksi 1, 2 days left.
+    mk(
+      "U-2026-016",
+      "P-MPL",
+      "Manajer Pelatihan",
+      "2026-12-01",
+      "direksi1",
+      "2026-12-04",
+      [
+        { badge: "000004", source: "HR (Rekomendasi)" },
+        { badge: "000002", source: "Diri sendiri" },
+        { badge: "000006", source: "HR (Daftar Talenta)" },
+      ],
+      [
+        { at: "2026-12-01T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
+        { at: "2026-12-02T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-04T09:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+      ],
+      [{ stage: "vp", badge: "000004", text: "Perlu pengalaman lintas fungsi sebagai pengembangan." }],
+    ),
+    // U-2026-017 · Direksi 2, 1 day left.
+    mk(
+      "U-2026-017",
+      "P-MAD",
+      "Manajer Administrasi",
+      "2026-11-27",
+      "direksi2",
+      "2026-12-03",
+      [
+        { badge: "000012", source: "HR (Rekomendasi)" },
+        { badge: "000001", source: "Diri sendiri" },
+        { badge: "000004", source: "HR (Daftar Talenta)" },
+      ],
+      [
+        { at: "2026-11-27T09:00", stage: "hr", action: "Usulan dikirim", note: "3 kandidat" },
+        { at: "2026-11-28T10:00", stage: "vp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-11-30T10:00", stage: "svp", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+        { at: "2026-12-03T10:00", stage: "direksi1", action: "Disetujui", note: "Seluruh kandidat diteruskan" },
+      ],
+    ),
   ];
 
   const nominations: Nomination[] = [
@@ -1196,7 +1298,7 @@ function createSeed(): Store {
       by: "000013",
       at: "2026-11-29",
       response: "Ditolak",
-      responseNote: "Dokumen persyaratan belum lengkap; fokus penyelesaian dahulu.",
+      responseNote: "Dokumen persyaratan belum lengkap; fokus penyelesaian dahulu",
     },
     // Nominated by the Atasan Langsung (no self-nomination step).
     {
@@ -1226,14 +1328,14 @@ function createSeed(): Store {
     { id: "n11", role: "atasan", kind: "Kecocokan", title: "Kecocokan bawahan", body: "2 bawahan belum dapat ditentukan kategorinya.", at: "2026-11-25T08:00", read: false },
     { id: "n12", role: "atasan", kind: "Data", title: "Diandra Pertiwi", body: "Nilai akhir kinerja belum tersedia.", at: "2026-11-25T08:00", read: false },
     { id: "n13", role: "svp", kind: "Usulan baru", title: "U-2026-009 · Manajer Anggaran", body: "Menunggu keputusan SVP SDM. Jatuh tempo hari ini.", at: "2026-12-02T10:00", proposalId: "U-2026-009", read: false },
-    { id: "n14", role: "direksi1", kind: "Usulan dikembalikan", title: "U-2026-010 · Manajer Pemeliharaan", body: "PIHC menolak calon Andi Saputra: dokumen persyaratan belum lengkap.", at: "2026-12-04T13:00", proposalId: "U-2026-010", read: false },
-    { id: "n15", role: "direksi2", kind: "Usulan baru", title: "U-2026-011 · Manajer K3", body: "Menunggu keputusan Direksi 2.", at: "2026-12-03T10:00", proposalId: "U-2026-011", read: false },
+    { id: "n14", role: "direksi1", kind: "Usulan baru", title: "U-2026-016 · Manajer Pelatihan", body: "Menunggu keputusan Direksi 1.", at: "2026-12-04T09:00", proposalId: "U-2026-016", read: false },
+    { id: "n15", role: "direksi2", kind: "Usulan baru", title: "U-2026-017 · Manajer Administrasi", body: "Menunggu keputusan Direksi 2.", at: "2026-12-03T10:00", proposalId: "U-2026-017", read: false },
     { id: "n16", role: "direksi3", kind: "Pengingat persetujuan", title: "U-2026-012 · Manajer Teknologi Informasi", body: "Batas keputusan Direksi 3 terlewati 3 hari.", at: "2026-12-04T06:00", proposalId: "U-2026-012", read: false },
-    { id: "n17", role: "dirut", kind: "Usulan baru", title: "U-2026-013 · Manajer Penjualan", body: "Menunggu penetapan calon Direktur Utama.", at: "2026-12-03T10:00", proposalId: "U-2026-013", read: false },
+    { id: "n17", role: "dirut", kind: "Usulan baru", title: "U-2026-013 · Manajer Penjualan", body: "Menunggu pemilihan dan penetapan calon Direktur Utama.", at: "2026-12-04T09:00", proposalId: "U-2026-013", read: false },
     { id: "n18", role: "pihc", kind: "Usulan baru", title: "U-2026-014 · Manajer Gudang", body: "Calon ditetapkan: Andi Saputra. Kelengkapan persyaratan belum terpenuhi.", at: "2026-12-04T09:00", proposalId: "U-2026-014", read: false },
-    { id: "n19", role: "hr", kind: "Usulan dikembalikan", title: "U-2026-010 · Manajer Pemeliharaan", body: "PIHC menolak calon; usulan kembali ke Direksi 1.", at: "2026-12-04T13:00", proposalId: "U-2026-010", read: false },
+    { id: "n19", role: "hr", kind: "Usulan ditolak PIHC", title: "U-2026-010 · Manajer Pemeliharaan", body: "PIHC menolak calon Andi Saputra: wawancara, kesehatan, dan LHKPN belum lengkap.", at: "2026-12-04T13:00", proposalId: "U-2026-010", read: false },
     { id: "n20", role: "hr", kind: "Persetujuan akhir", title: "U-2026-015 · Manajer Akuntansi", body: "PIHC menyetujui Citra Lestari.", at: "2026-11-18T13:00", proposalId: "U-2026-015", read: true },
-    { id: "n21", role: "hr", kind: "Permintaan wawancara", title: "U-2026-011 · Manajer K3", body: "Direksi 2 meminta penjadwalan wawancara kandidat.", at: "2026-12-03T11:00", proposalId: "U-2026-011", read: false },
+    { id: "n21", role: "hr", kind: "Permintaan wawancara", title: "U-2026-011 · Manajer K3", body: "Direktur Utama meminta penjadwalan wawancara kandidat. Usulan ditahan.", at: "2026-12-03T11:00", proposalId: "U-2026-011", read: false },
     { id: "n22", role: "karyawan", kind: "Wawancara", title: "U-2026-011 · Manajer K3", body: "Undangan wawancara 2026-12-08 telah dikirim.", at: "2026-12-03T14:00", proposalId: "U-2026-011", read: false },
   ];
 

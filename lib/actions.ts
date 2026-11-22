@@ -141,6 +141,21 @@ export async function uploadInterviewResult(_: FormState, fd: FormData): Promise
   if (bad) return { error: bad };
   const file = fd.get("file") as File;
   e.interview = { status: "Memenuhi", file: file.name };
+  // A proposal held for an interview returns to Direktur Utama once every candidate's result is on file.
+  for (const p of db().proposals) {
+    if (!p.held || !p.candidates.some((c) => c.badge === e.badge)) continue;
+    if (p.candidates.every((c) => getEmployee(c.badge)?.interview.status === "Memenuhi")) {
+      p.held = false;
+      pushNotif({
+        role: "dirut",
+        kind: "Usulan kembali",
+        title: `${p.id} · ${p.title}`,
+        body: "Hasil wawancara sudah lengkap. Usulan kembali ke antrean Direktur Utama.",
+        at: `${TODAY}T14:00`,
+        proposalId: p.id,
+      });
+    }
+  }
   refresh();
   return { ok: "Hasil wawancara terunggah." };
 }
@@ -270,6 +285,7 @@ export async function respondNomination(_: FormState, fd: FormData): Promise<For
     return { error: "Anda hanya dapat menanggapi pencalonan bawahan langsung." };
   const decision = str(fd, "decision");
   if (decision !== "Diterima" && decision !== "Ditolak") return { error: "Pilih Terima atau Tolak." };
+  if (decision === "Ditolak" && !str(fd, "note")) return { error: "Alasan penolakan wajib diisi." };
   const sent = proposalForVacancy(nom.vacancyId);
   if (sent && sent.stage !== "draft") return { error: `Usulan ${sent.id} sudah dikirim.` };
   nom.response = decision;
@@ -469,9 +485,9 @@ function saveNotes(p: NonNullable<ReturnType<typeof getProposal>>, stage: Stage,
   }
 }
 
-/** VP SDM and SVP SDM forward the full list of candidates with their notes. */
+/** VP SDM, SVP SDM, and Direksi 1–3 forward the full list of candidates with their notes. */
 export async function approveForward(_: FormState, fd: FormData): Promise<FormState> {
-  const ctx = await assertRole("vp", "svp");
+  const ctx = await assertRole("vp", "svp", "direksi1", "direksi2", "direksi3");
   const r = loadForApprover(fd, ctx.role);
   if ("error" in r) return { error: r.error };
   saveNotes(r.p, r.p.stage, fd);
@@ -480,41 +496,28 @@ export async function approveForward(_: FormState, fd: FormData): Promise<FormSt
   redirect("/approver/antrean?disetujui=1");
 }
 
-/** Direksi 1 chooses exactly one candidate. */
+/** Direktur Utama compares the candidates and chooses exactly one; the proposal stays at Dirut for designation. */
 export async function selectCandidate(_: FormState, fd: FormData): Promise<FormState> {
-  const ctx = await assertRole("direksi1");
+  const ctx = await assertRole("dirut");
   const r = loadForApprover(fd, ctx.role);
   if ("error" in r) return { error: r.error };
+  if (r.p.held) return { error: "Usulan ditahan menunggu hasil wawancara." };
   const badge = str(fd, "badge");
   if (!r.p.candidates.some((c) => c.badge === badge)) return { error: "Pilih satu kandidat terlebih dahulu." };
   const text = str(fd, "note");
-  r.p.notes = r.p.notes.filter((n) => n.stage !== "direksi1");
-  if (text) r.p.notes.push({ stage: "direksi1", badge, text });
+  r.p.notes = r.p.notes.filter((n) => n.stage !== "dirut");
+  if (text) r.p.notes.push({ stage: "dirut", badge, text });
   r.p.selectedBadge = badge;
-  advance(r.p, "Disetujui", `Pilihan: ${getEmployee(badge)?.name}`);
   refresh();
-  redirect("/approver/antrean?disetujui=1");
-}
-
-export async function approveSelected(_: FormState, fd: FormData): Promise<FormState> {
-  const ctx = await assertRole("direksi2", "direksi3");
-  const r = loadForApprover(fd, ctx.role);
-  if ("error" in r) return { error: r.error };
-  const badge = r.p.selectedBadge;
-  if (!badge) return { error: "Belum ada kandidat pilihan Direksi 1." };
-  const text = str(fd, "note");
-  r.p.notes = r.p.notes.filter((n) => n.stage !== r.p.stage);
-  if (text) r.p.notes.push({ stage: r.p.stage, badge, text });
-  advance(r.p, "Disetujui", `Calon pilihan: ${getEmployee(badge)?.name}`);
-  refresh();
-  redirect("/approver/antrean?disetujui=1");
+  redirect(`/approver/usulan/${r.p.id}`);
 }
 
 export async function designateCandidate(_: FormState, fd: FormData): Promise<FormState> {
   const ctx = await assertRole("dirut");
   const r = loadForApprover(fd, ctx.role);
   if ("error" in r) return { error: r.error };
-  if (!r.p.selectedBadge) return { error: "Belum ada kandidat pilihan Direksi." };
+  if (r.p.held) return { error: "Usulan ditahan menunggu hasil wawancara." };
+  if (!r.p.selectedBadge) return { error: "Pilih satu kandidat terlebih dahulu." };
   r.p.designatedBadge = r.p.selectedBadge;
   advance(r.p, "Calon ditetapkan", getEmployee(r.p.selectedBadge)?.name);
   refresh();
@@ -533,14 +536,12 @@ export async function finalApprove(_: FormState, fd: FormData): Promise<FormStat
     const reason = str(fd, "reason");
     if (!reason) return { error: "Alasan penolakan wajib diisi." };
     r.p.log.push({ at: `${TODAY}T13:00`, stage: "pihc", action: "Ditolak", note: reason });
-    // Back to Direksi 1 to choose again; only HR and Approver see the reason.
-    r.p.stage = "direksi1";
+    // Final status "Ditolak PIHC"; only HR and Approvers see the result.
+    r.p.stage = "ditolak";
     r.p.enteredAt = TODAY;
-    r.p.selectedBadge = undefined;
-    r.p.designatedBadge = undefined;
     pushNotif({
-      role: "direksi1",
-      kind: "Usulan dikembalikan",
+      role: "hr",
+      kind: "Usulan ditolak PIHC",
       title: `${r.p.id} · ${r.p.title}`,
       body: `PIHC menolak calon ${e.name}: ${reason}`,
       at: `${TODAY}T13:00`,
@@ -567,14 +568,15 @@ export async function finalApprove(_: FormState, fd: FormData): Promise<FormStat
 }
 
 export async function requestInterview(fd: FormData) {
-  const ctx = await assertRole("direksi1", "direksi2", "direksi3", "dirut");
+  const ctx = await assertRole("dirut");
   const p = getProposal(str(fd, "proposalId"));
-  if (!p) return;
+  if (!p || p.stage !== "dirut") return;
+  p.held = true;
   pushNotif({
     role: "hr",
     kind: "Permintaan wawancara",
     title: `${p.id} · ${p.title}`,
-    body: `${ROLE_LABEL[ctx.role]} meminta penjadwalan wawancara kandidat.`,
+    body: `${ROLE_LABEL[ctx.role]} meminta penjadwalan wawancara kandidat. Usulan ditahan.`,
     at: `${TODAY}T11:00`,
     proposalId: p.id,
   });

@@ -6,8 +6,8 @@ import { Card, CardTitle, EmptyState, Notice, Stat, Table, Td, Th, cn } from "./
 
 function statusOf(r: StatusRow) {
   if (r.rejected) return "Ditolak atasan";
-  if (r.stage === "selesai") return "Selesai";
-  if (r.stage === "hr") return r.awaitingSupervisor ? "Diterima HR · Belum direspons atasan" : "Diterima HR";
+  if (r.stage === "selesai" || r.stage === "ditolak") return "Selesai";
+  if (r.stage === "hr") return r.awaitingSupervisor ? "Menunggu persetujuan atasan" : "Diterima HR";
   return "Menunggu";
 }
 
@@ -25,9 +25,10 @@ export function StatusView({
   mode: "karyawan" | "atasan";
   justSent: boolean;
 }) {
-  const running = rows.filter((r) => r.stage !== "selesai" && !r.rejected).length;
-  const waiting = rows.filter((r) => r.stage !== "selesai" && r.stage !== "hr").length;
-  const done = rows.filter((r) => r.stage === "selesai").length;
+  const finished = (r: StatusRow) => r.stage === "selesai" || r.stage === "ditolak";
+  const running = rows.filter((r) => !finished(r) && !r.rejected).length;
+  const waiting = rows.filter((r) => !finished(r) && r.stage !== "hr").length;
+  const done = rows.filter(finished).length;
   const selected = rows.find((r) => r.key === selectedKey) ?? rows[0];
 
   return (
@@ -99,9 +100,9 @@ export function StatusView({
               ) : (
                 <p className="text-[1.15rem] text-muted">
                   {selected.rejected
-                    ? "Pencalonan ditolak Atasan Langsung dan tidak diteruskan sebagai pencalonan diri. HR masih dapat mengajukan karyawan ini dari rekomendasi."
+                    ? `Pencalonan ditolak Atasan Langsung${selected.rejectNote ? ` · Alasan: ${selected.rejectNote}` : ""}. Pencalonan tidak diteruskan sebagai pencalonan diri; HR masih dapat mengajukan karyawan ini dari rekomendasi.`
                     : selected.awaitingSupervisor
-                      ? "Pencalonan sudah diterima HR dengan tanda Belum direspons atasan, dan menunggu dimasukkan ke dalam usulan."
+                      ? "Pencalonan menunggu persetujuan Atasan Langsung dan sudah tercatat pada daftar kandidat HR."
                       : "Pencalonan sudah diterima HR dan menunggu dimasukkan ke dalam usulan."}
                 </p>
               )}

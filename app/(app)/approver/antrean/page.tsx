@@ -9,10 +9,7 @@ import { requireRole } from "@/lib/session";
 export const metadata = { title: "Menunggu keputusan · AURA Talent" };
 
 const ACTION: Record<string, string> = {
-  direksi1: "Bandingkan",
-  direksi2: "Tinjau",
-  direksi3: "Tinjau",
-  dirut: "Tetapkan",
+  dirut: "Bandingkan",
 };
 
 async function AntreanPage({
@@ -30,7 +27,7 @@ async function AntreanPage({
     .filter((p) => !q || `${p.id} ${p.title}`.toLowerCase().includes(q))
     .filter((p) => !status || (status === "terlambat" ? isOverdue(p) : !isOverdue(p)));
   const late = all.filter(isOverdue).length;
-  const forPick = role === "direksi1" || role === "dirut";
+  const forPick = role === "dirut";
 
   return (
     <>
@@ -93,7 +90,10 @@ async function AntreanPage({
           <tbody>
             {rows.map((p) => (
               <tr key={p.id}>
-                <Td>{p.id}</Td>
+                <Td>
+                  {p.id}
+                  {p.held ? <div className="mt-1 text-sm font-semibold text-warn">Ditahan</div> : null}
+                </Td>
                 <Td>{p.title}</Td>
                 <Td>{p.candidates.length} kandidat</Td>
                 <Td>HR</Td>
@@ -101,7 +101,7 @@ async function AntreanPage({
                 <Td className={cn(isOverdue(p) ? "font-semibold text-danger" : "font-medium")}>{slaText(p)}</Td>
                 <Td>
                   <Link href={`/approver/usulan/${p.id}`} className="font-semibold text-brand hover:underline">
-                    {ACTION[role] ?? "Tinjau"} →
+                    {role === "dirut" && p.selectedBadge ? "Tetapkan" : (ACTION[role] ?? "Tinjau")} →
                   </Link>
                 </Td>
               </tr>
