@@ -28,11 +28,12 @@ async function AntreanPage({
     .filter((p) => !status || (status === "terlambat" ? isOverdue(p) : !isOverdue(p)));
   const late = all.filter(isOverdue).length;
   const forPick = role === "dirut";
+  const notesStage = role !== "dirut" && role !== "pihc";
 
   return (
     <>
       <PageHeader
-        title={forPick ? "Usulan menunggu pemilihan" : role === "pihc" ? "Usulan menunggu keputusan" : "Usulan menunggu catatan"}
+        title={forPick ? "Usulan menunggu pemilihan" : notesStage ? "Usulan menunggu catatan" : "Usulan menunggu keputusan"}
         subtitle={
           forPick
             ? `Antrean ${ROLE_LABEL[role]} · Pilih usulan untuk membandingkan kandidat yang telah diverifikasi.`
@@ -41,13 +42,13 @@ async function AntreanPage({
       />
 
       {sp.disetujui === "1" ? (
-        <Notice tone="ok" title="Keputusan tersimpan" className="mb-6">
-          Usulan diteruskan ke jenjang berikutnya dan pengusul telah diberi tahu.
+        <Notice tone="ok" title={notesStage ? "Catatan tersimpan" : "Keputusan tersimpan"} className="mb-6">
+          Usulan diteruskan ke jenjang berikutnya.
         </Notice>
       ) : null}
 
       <div className="mb-6 grid gap-6 md:grid-cols-3">
-        <Stat value={all.length} label="Menunggu keputusan" />
+        <Stat value={all.length} label={notesStage ? "Menunggu catatan" : "Menunggu keputusan"} />
         <Stat value={late} label="Terlambat" danger={late > 0} />
         <Stat value={all.length - late} label="Masih dalam batas waktu" />
       </div>

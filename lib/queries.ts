@@ -204,7 +204,10 @@ export function proposalsForBadge(badge: string) {
 }
 
 export function recommendationFor(vacancyId: string, badge: string) {
-  return db().recommendations[vacancyId]?.find((r) => r.badge === badge);
+  return (
+    db().recommendations[vacancyId]?.find((r) => r.badge === badge) ??
+    db().proposalRecommendations[vacancyId]?.find((r) => r.badge === badge)
+  );
 }
 
 /** Category shown next to a candidate: derived from the readiness score when one exists. */

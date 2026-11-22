@@ -34,7 +34,7 @@ export const NAV: Record<RoleGroup, NavItem[]> = {
   ],
   approver: [
     { label: "Dashboard", href: "/approver" },
-    { label: "Menunggu keputusan", href: "/approver/antrean" },
+    { label: "Antrean usulan", href: "/approver/antrean" },
     { label: "Riwayat persetujuan", href: "/approver/riwayat" },
   ],
 };

@@ -8,6 +8,7 @@ export const metadata = { title: "Dashboard Approver · AURA Talent" };
 
 export default async function ApproverDasbor() {
   const { role } = await requireRole("approver");
+  const notesStage = role !== "dirut" && role !== "pihc";
   const queue = queueFor(role);
   const late = queue.filter(isOverdue);
   const first = queue[0];
@@ -15,15 +16,15 @@ export default async function ApproverDasbor() {
 
   return (
     <>
-      <PageHeader title="Dashboard · Approver" subtitle={`Ruang keputusan ${ROLE_LABEL[role]} · ${fmtLong(TODAY)}`} />
+      <PageHeader title="Dashboard · Approver" subtitle={`Ruang kerja ${ROLE_LABEL[role]} · ${fmtLong(TODAY)}`} />
 
       <div className="mb-6 grid gap-6 md:grid-cols-2">
         <Stat
-          label="Usulan menunggu keputusan Anda"
+          label={notesStage ? "Usulan menunggu catatan Anda" : "Usulan menunggu keputusan Anda"}
           value={queue.length}
           note={
             <Link href="/approver/antrean" className="font-semibold text-brand hover:underline">
-              Buka antrean persetujuan →
+              Buka antrean usulan →
             </Link>
           }
         />
@@ -31,13 +32,13 @@ export default async function ApproverDasbor() {
           label="Usulan terlambat"
           value={late.length}
           danger={late.length > 0}
-          note={<span className="text-brand">Prioritaskan keputusan melewati SLA</span>}
+          note={<span className="text-brand">Prioritaskan usulan yang melewati SLA</span>}
         />
       </div>
 
       {first ? (
         <Card tone="soft" className="mb-6">
-          <h2 className="text-[1.6rem] font-semibold text-brand">Perlu keputusan Anda</h2>
+          <h2 className="text-[1.6rem] font-semibold text-brand">{notesStage ? "Perlu catatan Anda" : "Perlu keputusan Anda"}</h2>
           <p className="mt-4 text-[1.9rem] font-semibold">
             {first.id} · {first.title} · {first.candidates.length} kandidat
           </p>
@@ -48,11 +49,11 @@ export default async function ApproverDasbor() {
             href={`/approver/usulan/${first.id}`}
             className="mt-4 inline-block text-[1.35rem] font-semibold text-brand hover:underline"
           >
-            Tinjau usulan dan kirim keputusan →
+            {notesStage ? "Tinjau usulan dan kirim catatan →" : "Tinjau usulan dan kirim keputusan →"}
           </Link>
         </Card>
       ) : (
-        <EmptyState title="Tidak ada usulan yang menunggu keputusan Anda">
+        <EmptyState title={notesStage ? "Tidak ada usulan yang menunggu catatan Anda" : "Tidak ada usulan yang menunggu keputusan Anda"}>
           Usulan baru akan muncul di sini dan pada notifikasi.
         </EmptyState>
       )}
