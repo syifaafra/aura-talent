@@ -8,6 +8,7 @@ import {
   db,
   type Employee,
   type MatchCategory,
+  type Nomination,
   type Notif,
   type Position,
   type Proposal,
@@ -54,6 +55,13 @@ export function kpiAchievedBothYears(e: Employee) {
 /** Category can only be determined once final grades and assessment exist. */
 export function isCategoryDeterminable(e: Employee) {
   return hasBothGrades(e) && Boolean(e.assessment);
+}
+
+/** Readiness score thresholds: Match ≥85, Partial Match 70–84, Less Match <70. */
+export function categoryFromScore(score: number): MatchCategory {
+  if (score >= 85) return "Match";
+  if (score >= 70) return "Partial Match";
+  return "Less Match";
 }
 
 export interface MatchRow {
@@ -199,6 +207,14 @@ export function recommendationFor(vacancyId: string, badge: string) {
   return db().recommendations[vacancyId]?.find((r) => r.badge === badge);
 }
 
+/** Category shown next to a candidate: derived from the readiness score when one exists. */
+export function categoryFor(vacancyId: string, badge: string): MatchCategory {
+  const rec = recommendationFor(vacancyId, badge);
+  if (rec) return categoryFromScore(rec.score);
+  const e = getEmployee(badge);
+  return (e && matchesFor(e).find((m) => m.position.id === vacancyId)?.category) || "Match";
+}
+
 export function notesFor(p: Proposal, badge: string) {
   return p.notes.filter((n) => n.badge === badge);
 }
@@ -225,6 +241,18 @@ export function pushNotif(n: Omit<Notif, "id" | "read">) {
 
 /* ----------------------------- Nominations ----------------------------- */
 
+/** The nomination that currently counts for (badge, vacancy); one already rejected by the atasan does not. */
+export function activeNomination(badge: string, vacancyId: string) {
+  return db().nominations.find(
+    (n) => n.badge === badge && n.vacancyId === vacancyId && n.response !== "Ditolak",
+  );
+}
+
+/** Self-nomination that has an atasan who has not yet responded. */
+export function awaitingSupervisor(n: Nomination) {
+  return n.source === "Diri sendiri" && !n.response && Boolean(getEmployee(n.badge)?.supervisor);
+}
+
 /** Returns a user-facing reason when `badge` cannot be nominated, else undefined. */
 export function nominationBlock(badge: string, vacancyId: string): string | undefined {
   const e = getEmployee(badge);
@@ -234,8 +262,11 @@ export function nominationBlock(badge: string, vacancyId: string): string | unde
   if (!isCategoryDeterminable(e)) return "Kategori kecocokan belum dapat ditentukan.";
   const m = matchesFor(e).find((x) => x.position.id === vacancyId);
   if (m?.category !== "Match") return "Pencalonan hanya tersedia untuk kategori Match.";
+  // A candidate can be nominated only once per position, by any party.
+  if (activeNomination(badge, vacancyId)) return "Kandidat sudah dicalonkan untuk jabatan ini.";
+  // After a rejection only HR can still put the employee forward (from the recommendations).
   if (db().nominations.some((n) => n.badge === badge && n.vacancyId === vacancyId))
-    return "Kandidat sudah dicalonkan untuk jabatan ini.";
+    return "Pencalonan untuk jabatan ini sudah ditolak atasan. HR yang dapat mengajukan kandidat ini.";
   const prop = db().proposals.find((x) => x.vacancyId === vacancyId);
   if (prop?.candidates.some((c) => c.badge === badge))
     return "Kandidat sudah termasuk dalam usulan untuk jabatan ini.";
@@ -257,6 +288,10 @@ export interface StatusRow {
   date: string;
   stage: Stage | "hr";
   proposal?: Proposal;
+  /** Self-nomination rejected by the Atasan Langsung. */
+  rejected?: boolean;
+  /** Self-nomination still waiting for the Atasan Langsung. */
+  awaitingSupervisor?: boolean;
 }
 
 /** Proposals (and not-yet-proposed nominations) that involve the given badges. */
@@ -294,6 +329,8 @@ export function statusRows(badges: string[]): StatusRow[] {
         source: n.source,
         date: n.at,
         stage: "hr",
+        rejected: n.response === "Ditolak",
+        awaitingSupervisor: awaitingSupervisor(n),
       });
     }
   }

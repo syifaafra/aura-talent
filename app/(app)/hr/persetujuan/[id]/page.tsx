@@ -7,6 +7,7 @@ import { Card, CardTitle, Notice, PageHeader, buttonClass } from "@/components/u
 import { STAGE_LABEL, fmtDate, fmtDateTime, addDays, SLA_DAYS } from "@/lib/db";
 import { sendReminder } from "@/lib/actions";
 import {
+  categoryFor,
   deadlineOf,
   getEmployee,
   getProposal,
@@ -82,7 +83,7 @@ async function PersetujuanDetail({ params }: { params: Promise<{ id: string }> }
                       {e?.name}
                       {r ? ` · ${r.score} / 100` : ""}
                     </p>
-                    <p className="text-[1.05rem] text-ok">Match · Syarat wajib memenuhi</p>
+                    <p className="text-[1.05rem] text-ok">{categoryFor(p.vacancyId, c.badge)} · Syarat wajib memenuhi</p>
                     <p className="text-sm text-muted">{c.source}</p>
                   </li>
                 );

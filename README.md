@@ -51,6 +51,28 @@ All accounts use the password **`password`**. They are also listed under "Akun d
 | `direksi2`, `direksi3` | Direksi 2 / 3 | Approve the selected candidate |
 | `dirut` | Direktur Utama | Designate the final candidate |
 | `pihc` | PIHC | Final approval (needs interview, health, and LHKPN complete) |
+| `maya` | Karyawan | Assessment and health "Tidak Direkomendasikan", KPI 2025 not achieved, Less Match |
+| `fajar` | Karyawan | Only the 2024 final grade and no assessment, so the category cannot be determined |
+| `citra` | Karyawan | Complete data and documents; accepted self-nomination (N-005) and nominated by atasan (N-007); winner of the finished proposal U-2026-015 |
+| `andi` | Karyawan | Match category but interview, health, and LHKPN all pending; self-nomination rejected by atasan (N-006) |
+
+### Seed data scenarios
+
+Seed data lives in `lib/db.ts` (`createSeed`). Besides the base proposals (U-2026-003 to -008, draft U-2026-004/-005), it
+covers every approval stage so each approver queue has something to review:
+
+| Proposal | Stage | Scenario |
+| --- | --- | --- |
+| U-2026-009 Manajer Anggaran | SVP | Due today (SLA boundary) |
+| U-2026-010 Manajer Pemeliharaan | Direksi 1 | Returned after PIHC rejected the designated candidate (reason in the log, visible to HR and approvers) |
+| U-2026-011 Manajer K3 | Direksi 2 | 1 day left; interview already scheduled (08/12/2026) and Direksi interview request |
+| U-2026-012 Manajer Teknologi Informasi | Direksi 3 | Overdue by 3 days (SLA escalation) |
+| U-2026-013 Manajer Penjualan | Dirut | Waiting for designation |
+| U-2026-014 Manajer Gudang | PIHC | Designated candidate (Andi) has no documents, so **Setujui** stays disabled |
+| U-2026-015 Manajer Akuntansi | Selesai | Final approval already given |
+
+Nominations: N-005 (self, accepted), N-006 (self, rejected by atasan), N-007 (by Atasan Langsung), plus the earlier
+pending ones (N-001 to N-004). Assessment `validUntil` is display-only and not enforced, so there is no expiry scenario.
 
 ### Suggested end-to-end walkthrough
 

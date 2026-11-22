@@ -32,8 +32,7 @@ export function SubmitButton({
       disabled={off}
       aria-disabled={off}
       className={cn(
-        buttonClass(variant, className),
-        off && variant === "primary" && "cursor-not-allowed bg-[#dde1e8] text-[#6b7785] hover:bg-[#dde1e8]",
+        buttonClass(off && variant === "primary" ? "disabled" : variant, className),
         off && variant !== "primary" && "cursor-not-allowed opacity-60",
       )}
     >

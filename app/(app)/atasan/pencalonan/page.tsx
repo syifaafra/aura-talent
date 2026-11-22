@@ -1,10 +1,19 @@
 import { Suspense } from "react";
 import { PageFallback } from "@/components/page-fallback";
 import Link from "next/link";
+import { ActionForm, SubmitButton } from "@/components/forms";
 import { NominationForm } from "@/components/nomination-form";
-import { Card, EmptyState, Notice, PageHeader } from "@/components/ui";
-import { db, fmtLong } from "@/lib/db";
-import { checklist, eligibleVacancies, nominationBlock, pendingDocuments } from "@/lib/queries";
+import { Card, CardTitle, EmptyState, Notice, PageHeader, inputClass } from "@/components/ui";
+import { respondNomination } from "@/lib/actions";
+import { db, fmtDate, fmtLong } from "@/lib/db";
+import {
+  checklist,
+  eligibleVacancies,
+  getPosition,
+  nominationBlock,
+  pendingDocuments,
+  proposalForVacancy,
+} from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
 export const metadata = { title: "Pencalonan bawahan · AURA Talent" };
@@ -58,12 +67,72 @@ async function PencalonanBawahan({
   }
 
   const options = subs.flatMap((s) => eligibleVacancies(s).map((o) => ({ s, o })));
+  const selfNominations = db().nominations.filter(
+    (n) => n.source === "Diri sendiri" && subs.some((s) => s.badge === n.badge),
+  );
   return (
     <>
       <PageHeader
         title="Pencalonan bawahan"
         subtitle="Pilih bawahan langsung dan lowongan aktif yang sesuai (kategori Match)."
       />
+      <Card className="mb-6">
+        <CardTitle>Pencalonan diri bawahan</CardTitle>
+        {selfNominations.length === 0 ? (
+          <p className="text-[1.1rem] text-muted">Belum ada pencalonan diri yang perlu ditanggapi.</p>
+        ) : (
+          <ul className="space-y-5">
+            {selfNominations.map((n) => {
+              const who = subs.find((s) => s.badge === n.badge)!;
+              const sent = proposalForVacancy(n.vacancyId);
+              const locked = sent && sent.stage !== "draft" ? sent.id : undefined;
+              return (
+                <li key={n.id} className="border-b border-line pb-5 last:border-0 last:pb-0">
+                  <p className="text-[1.3rem] font-semibold">
+                    {who.name} → {getPosition(n.vacancyId)?.title ?? n.vacancyId}
+                  </p>
+                  <p className="text-[1.05rem] text-muted">
+                    {who.badge} · Diajukan {fmtDate(n.at)} ·{" "}
+                    <span className="font-semibold text-brand">{n.response ?? "Belum direspons"}</span>
+                  </p>
+                  <p className="mt-2 text-[1.1rem] leading-relaxed">{n.justification}</p>
+                  {locked ? (
+                    <p className="mt-2 text-base text-muted">Usulan {locked} sudah dikirim.</p>
+                  ) : n.response ? (
+                    n.response === "Ditolak" ? (
+                      <p className="mt-2 text-base text-muted">
+                        {n.responseNote ? `Catatan: ${n.responseNote}. ` : ""}HR masih dapat mengajukan karyawan ini dari
+                        rekomendasi.
+                      </p>
+                    ) : null
+                  ) : (
+                    <ActionForm action={respondNomination} className="mt-3">
+                      <input type="hidden" name="id" value={n.id} />
+                      <label htmlFor={`note-${n.id}`} className="sr-only">
+                        Catatan
+                      </label>
+                      <input
+                        id={`note-${n.id}`}
+                        name="note"
+                        placeholder="Catatan (opsional)"
+                        className={`${inputClass} mb-3 max-w-xl`}
+                      />
+                      <div className="flex gap-3">
+                        <SubmitButton name="decision" value="Diterima" pendingText="Menyimpan…">
+                          Terima
+                        </SubmitButton>
+                        <SubmitButton name="decision" value="Ditolak" variant="secondary" pendingText="Menyimpan…">
+                          Tolak
+                        </SubmitButton>
+                      </div>
+                    </ActionForm>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
       {options.length === 0 ? (
         <EmptyState title="Belum ada pencalonan yang dapat diajukan">
           Tidak ada bawahan langsung dengan kategori Match pada lowongan aktif. Periksa{" "}

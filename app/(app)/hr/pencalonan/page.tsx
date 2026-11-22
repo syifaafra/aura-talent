@@ -4,6 +4,9 @@ import Link from "next/link";
 import { Card, Notice, PageHeader, cn, inputClass } from "@/components/ui";
 import { db, fmtLong } from "@/lib/db";
 import {
+  activeNomination,
+  awaitingSupervisor,
+  categoryFor,
   getEmployee,
   isCategoryDeterminable,
   matchesFor,
@@ -23,8 +26,8 @@ async function PencalonanHr({
   const sp = await searchParams;
   const store = db();
 
-  // Vacancies that either accept a proposal or already have one.
-  const options = store.positions.filter((p) => p.vacancyCode);
+  // Positions with a vacancy, plus predicted vacancies HR may still propose closed (no vacancy opened).
+  const options = store.positions.filter((p) => p.vacancyCode || p.id in store.recommendations);
   const requested = typeof sp.lowongan === "string" ? sp.lowongan : undefined;
   const position =
     options.find((p) => p.id === requested) ??
@@ -43,7 +46,7 @@ async function PencalonanHr({
         <select id="lowongan" name="lowongan" defaultValue={position.id} className={cn(inputClass, "border-brand font-medium")}>
           {options.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.title} · Lowongan {p.vacancyCode}
+              {p.title} · {p.vacancyCode ? `Lowongan ${p.vacancyCode}` : "Usulan tertutup"}
             </option>
           ))}
         </select>
@@ -61,14 +64,19 @@ async function PencalonanHr({
     />
   );
 
-  const closeText = `Tutup ${position.openUntil ? fmtLong(position.openUntil) : "-"}`;
+  // HR decides outside the system whether a vacancy opens; without one the proposal is closed.
+  const closed = !position.vacancyCode;
+  const closeText = closed
+    ? "Usulan tertutup · Tanpa lowongan"
+    : `Tutup ${position.openUntil ? fmtLong(position.openUntil) : "-"}`;
   const banner = (
     <Card className="mb-6">
       <p className="text-[1.45rem] font-semibold text-brand">
-        Jabatan tujuan (terkunci): {position.title} · Lowongan {position.vacancyCode}
+        Jabatan tujuan (terkunci): {position.title}
+        {closed ? " · Usulan tertutup" : ` · Lowongan ${position.vacancyCode}`}
       </p>
       <p className="mt-1 text-[1.05rem] text-muted">
-        {closeText.replace("Tutup ", "Tutup ")} · HR meninjau kandidat sebelum meneruskan usulan ke VP SDM.
+        {closeText} · HR meninjau kandidat sebelum meneruskan usulan ke VP SDM.
       </p>
     </Card>
   );
@@ -92,7 +100,7 @@ async function PencalonanHr({
               const e = getEmployee(c.badge);
               return (
                 <li key={c.badge}>
-                  <span className="text-brand">✓</span> {e?.name} · Match · {c.source}
+                  <span className="text-brand">✓</span> {e?.name} · {categoryFor(position.id, c.badge)} · {c.source}
                   <p className="ml-6 text-[1.05rem] text-muted">Syarat wajib memenuhi</p>
                 </li>
               );
@@ -107,16 +115,25 @@ async function PencalonanHr({
   const pool: PoolItem[] = store.employees
     .filter(isCategoryDeterminable)
     .map((e) => {
-      const nomination = store.nominations.find((n) => n.badge === e.badge && n.vacancyId === position.id);
+      // A nomination already rejected by the atasan no longer counts as submitted.
+      const nomination = activeNomination(e.badge, position.id);
+      const hasRec = (store.recommendations[position.id] ?? []).some((r) => r.badge === e.badge);
       return {
         badge: e.badge,
         name: e.name,
-        category: matchesFor(e).find((m) => m.position.id === position.id)?.category ?? "Talenta",
+        category:
+          hasRec || matchesFor(e).some((m) => m.position.id === position.id)
+            ? categoryFor(position.id, e.badge)
+            : "Talenta",
         source: nomination?.source ?? "Ditambahkan HR dari Daftar Talenta",
+        nominatedBy: nomination ? (nomination.source === "Diri sendiri" ? "Karyawan" : "Atasan") : undefined,
+        awaitingSupervisor: nomination ? awaitingSupervisor(nomination) : false,
       };
     });
   const recommended = (store.recommendations[position.id] ?? []).map((r) => r.badge);
-  const nominated = store.nominations.filter((n) => n.vacancyId === position.id).map((n) => n.badge);
+  const nominated = store.nominations
+    .filter((n) => n.vacancyId === position.id && n.response !== "Ditolak")
+    .map((n) => n.badge);
   const fromParam = typeof sp.pilih === "string" ? sp.pilih.split(",") : [];
   const initial = [
     ...new Set([...(proposal?.candidates.map((c) => c.badge) ?? []), ...fromParam, ...nominated]),

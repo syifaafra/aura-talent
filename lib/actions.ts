@@ -26,6 +26,7 @@ import {
   type ImportState,
 } from "./form";
 import {
+  activeNomination,
   documentsComplete,
   getEmployee,
   getPosition,
@@ -259,6 +260,29 @@ export async function submitNomination(_: FormState, fd: FormData): Promise<Form
   redirect(self ? "/karyawan/status?dikirim=1" : "/atasan/status?dikirim=1");
 }
 
+/** Atasan Langsung accepts or rejects a direct report's self-nomination. No notification is sent. */
+export async function respondNomination(_: FormState, fd: FormData): Promise<FormState> {
+  const ctx = await assertRole("atasan");
+  const nom = db().nominations.find((n) => n.id === str(fd, "id"));
+  if (!nom || nom.source !== "Diri sendiri") return { error: "Pencalonan tidak ditemukan." };
+  const owner = getEmployee(nom.badge);
+  if (!owner || owner.supervisor !== ctx.user.badge)
+    return { error: "Anda hanya dapat menanggapi pencalonan bawahan langsung." };
+  const decision = str(fd, "decision");
+  if (decision !== "Diterima" && decision !== "Ditolak") return { error: "Pilih Terima atau Tolak." };
+  const sent = proposalForVacancy(nom.vacancyId);
+  if (sent && sent.stage !== "draft") return { error: `Usulan ${sent.id} sudah dikirim.` };
+  nom.response = decision;
+  nom.responseNote = str(fd, "note") || undefined;
+  refresh();
+  return {
+    ok:
+      decision === "Diterima"
+        ? `Pencalonan ${owner.name} diterima.`
+        : `Pencalonan ${owner.name} ditolak. HR masih dapat mengajukan karyawan ini dari rekomendasi.`,
+  };
+}
+
 /* ---------------------------- HR proposal ---------------------------- */
 
 function nextProposalId() {
@@ -292,7 +316,7 @@ export async function submitProposal(_: FormState, fd: FormData): Promise<FormSt
   }
 
   const candidates = badges.map((badge) => {
-    const nom = db().nominations.find((n) => n.badge === badge && n.vacancyId === vacancyId);
+    const nom = activeNomination(badge, vacancyId);
     const recommended = db().recommendations[vacancyId]?.some((r) => r.badge === badge);
     return {
       badge,
@@ -497,24 +521,47 @@ export async function designateCandidate(_: FormState, fd: FormData): Promise<Fo
   redirect("/approver/antrean?disetujui=1");
 }
 
+/** PIHC checks the PI-SDM-PD-013 requirements of the designated candidate, then approves or rejects. */
 export async function finalApprove(_: FormState, fd: FormData): Promise<FormState> {
   const ctx = await assertRole("pihc");
   const r = loadForApprover(fd, ctx.role);
   if ("error" in r) return { error: r.error };
   const e = getEmployee(r.p.designatedBadge);
   if (!e) return { error: "Calon belum ditetapkan." };
-  if (!documentsComplete(e))
-    return { error: "Wawancara, kesehatan, dan LHKPN harus lengkap sebelum persetujuan akhir." };
-  advance(r.p, "Persetujuan akhir", e.name);
-  for (const role of ["hr", "karyawan", "atasan"] as RoleKey[])
+
+  if (str(fd, "decision") === "reject") {
+    const reason = str(fd, "reason");
+    if (!reason) return { error: "Alasan penolakan wajib diisi." };
+    r.p.log.push({ at: `${TODAY}T13:00`, stage: "pihc", action: "Ditolak", note: reason });
+    // Back to Direksi 1 to choose again; only HR and Approver see the reason.
+    r.p.stage = "direksi1";
+    r.p.enteredAt = TODAY;
+    r.p.selectedBadge = undefined;
+    r.p.designatedBadge = undefined;
     pushNotif({
-      role,
-      kind: "Persetujuan akhir",
+      role: "direksi1",
+      kind: "Usulan dikembalikan",
       title: `${r.p.id} · ${r.p.title}`,
-      body: `PIHC menyetujui ${e.name}.`,
+      body: `PIHC menolak calon ${e.name}: ${reason}`,
       at: `${TODAY}T13:00`,
       proposalId: r.p.id,
     });
+    refresh();
+    redirect("/approver/riwayat");
+  }
+
+  if (!documentsComplete(e))
+    return { error: "Wawancara, kesehatan, dan LHKPN harus lengkap sebelum persetujuan akhir." };
+  advance(r.p, "Persetujuan akhir", e.name);
+  // The final result is visible to HR and Approvers only; SK and inauguration happen outside the system.
+  pushNotif({
+    role: "hr",
+    kind: "Persetujuan akhir",
+    title: `${r.p.id} · ${r.p.title}`,
+    body: `PIHC menyetujui ${e.name}.`,
+    at: `${TODAY}T13:00`,
+    proposalId: r.p.id,
+  });
   refresh();
   redirect("/approver/riwayat");
 }

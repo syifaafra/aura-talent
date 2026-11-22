@@ -5,8 +5,9 @@ import { CompactSteps } from "./proposal-status";
 import { Card, CardTitle, EmptyState, Notice, Stat, Table, Td, Th, cn } from "./ui";
 
 function statusOf(r: StatusRow) {
+  if (r.rejected) return "Ditolak atasan";
   if (r.stage === "selesai") return "Selesai";
-  if (r.stage === "hr") return "Diterima HR";
+  if (r.stage === "hr") return r.awaitingSupervisor ? "Diterima HR · Belum direspons atasan" : "Diterima HR";
   return "Menunggu";
 }
 
@@ -24,7 +25,7 @@ export function StatusView({
   mode: "karyawan" | "atasan";
   justSent: boolean;
 }) {
-  const running = rows.filter((r) => r.stage !== "selesai").length;
+  const running = rows.filter((r) => r.stage !== "selesai" && !r.rejected).length;
   const waiting = rows.filter((r) => r.stage !== "selesai" && r.stage !== "hr").length;
   const done = rows.filter((r) => r.stage === "selesai").length;
   const selected = rows.find((r) => r.key === selectedKey) ?? rows[0];
@@ -78,7 +79,7 @@ export function StatusView({
                     <Td>{mode === "atasan" ? r.name : r.source}</Td>
                     <Td>{fmtDate(r.date)}</Td>
                     <Td className="font-semibold text-brand">
-                      {r.stage === "hr" ? "HR" : STAGE_LABEL[r.stage]}
+                      {r.rejected ? "Atasan Langsung" : r.stage === "hr" ? "HR" : STAGE_LABEL[r.stage]}
                     </Td>
                     <Td className="font-semibold text-brand">{statusOf(r)}</Td>
                   </tr>
@@ -97,7 +98,11 @@ export function StatusView({
                 <CompactSteps proposal={selected.proposal} />
               ) : (
                 <p className="text-[1.15rem] text-muted">
-                  Pencalonan sudah diterima HR dan menunggu dimasukkan ke dalam usulan.
+                  {selected.rejected
+                    ? "Pencalonan ditolak Atasan Langsung dan tidak diteruskan sebagai pencalonan diri. HR masih dapat mengajukan karyawan ini dari rekomendasi."
+                    : selected.awaitingSupervisor
+                      ? "Pencalonan sudah diterima HR dengan tanda Belum direspons atasan, dan menunggu dimasukkan ke dalam usulan."
+                      : "Pencalonan sudah diterima HR dan menunggu dimasukkan ke dalam usulan."}
                 </p>
               )}
             </Card>

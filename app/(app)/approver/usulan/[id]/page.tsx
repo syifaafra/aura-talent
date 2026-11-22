@@ -21,6 +21,7 @@ import {
   type Stage,
 } from "@/lib/db";
 import {
+  categoryFor,
   documentsComplete,
   getEmployee,
   getProposal,
@@ -67,7 +68,7 @@ function CandidateRow({
           {badgeText ? ` · ${badgeText}` : ""}
         </h3>
         <p className="mt-2 text-[1.15rem] font-medium text-ok">
-          {rec ? `Readiness ${rec.score} / 100 · ` : ""}Match · Syarat wajib memenuhi
+          {rec ? `Readiness ${rec.score} / 100 · ` : ""}{categoryFor(p.vacancyId, badge)} · Syarat wajib memenuhi
         </p>
         <p className="mt-2 text-[1.1rem] text-muted">{e.strengths || rec?.reason}</p>
       </div>
@@ -195,7 +196,7 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
         name: e.name,
         position: e.position,
         score: rec?.score,
-        category: "Match",
+        category: categoryFor(p.vacancyId, c.badge),
         kpi: "KPI 2024 & 2025: Tercapai",
         assessment: `Asesmen: ${e.assessment?.result ?? "-"}`,
         track: e.strengths || rec?.reason || "-",
@@ -238,7 +239,7 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
       <p className="text-sm font-semibold uppercase tracking-wide text-brand">Kandidat terpilih</p>
       <h2 className="mt-2 text-[2rem] font-semibold">{selected.e.name}</h2>
       <p className="mt-3 text-[2.1rem] font-semibold text-brand">
-        {selected.rec ? `${selected.rec.score} / 100 · ` : ""}Match
+        {selected.rec ? `${selected.rec.score} / 100 · ` : ""}{categoryFor(p.vacancyId, selected.e.badge)}
       </p>
       <p className="mt-3 text-[1.25rem] font-semibold text-ok">Syarat wajib memenuhi</p>
       <p className="mt-2 text-[1.2rem] leading-relaxed">
@@ -429,15 +430,35 @@ async function UsulanDetail({ params }: { params: Promise<{ id: string }> }) {
       </div>
       <ActionForm action={finalApprove} className="mt-6">
         {hidden}
+        <p className="mb-3 text-[1.1rem] text-muted">
+          PIHC memeriksa pemenuhan persyaratan promosi sesuai PI-SDM-PD-013 untuk calon yang ditetapkan. Bila tidak
+          terpenuhi, tolak dan isi alasannya.
+        </p>
+        <label htmlFor="reason" className="mb-1.5 block text-base font-semibold text-muted">
+          Alasan penolakan (wajib bila menolak)
+        </label>
+        <textarea
+          id="reason"
+          name="reason"
+          rows={3}
+          className="mb-4 w-full resize-y rounded-lg border border-line px-4 py-3 text-[1.1rem] focus:border-brand"
+        />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link href="/approver/antrean" className="font-semibold text-brand hover:underline">
             Kembali ke daftar usulan
           </Link>
-          {complete ? (
-            <SubmitButton pendingText="Menyimpan…">Setujui</SubmitButton>
-          ) : (
-            <DisabledButton className="!bg-[#6b7a8c] !text-white">Setujui · Menunggu dokumen</DisabledButton>
-          )}
+          <div className="flex items-center gap-3">
+            <SubmitButton name="decision" value="reject" variant="secondary" pendingText="Menyimpan…">
+              Tolak
+            </SubmitButton>
+            {complete ? (
+              <SubmitButton name="decision" value="approve" pendingText="Menyimpan…">
+                Setujui
+              </SubmitButton>
+            ) : (
+              <DisabledButton className="!bg-[#6b7a8c] !text-white">Setujui · Menunggu dokumen</DisabledButton>
+            )}
+          </div>
         </div>
       </ActionForm>
       <p className="mt-3 text-base text-muted">Tanggal masuk tahap: {fmtDate(p.enteredAt)}</p>

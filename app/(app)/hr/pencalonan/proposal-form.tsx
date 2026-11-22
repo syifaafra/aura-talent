@@ -13,6 +13,9 @@ export interface PoolItem {
   name: string;
   category: string;
   source: string;
+  /** Set when the candidate was already submitted by Karyawan or Atasan for this position. */
+  nominatedBy?: "Karyawan" | "Atasan";
+  awaitingSupervisor?: boolean;
 }
 
 export function ProposalForm({
@@ -41,7 +44,9 @@ export function ProposalForm({
   const byBadge = new Map(pool.map((p) => [p.badge, p]));
   const chosen = selected.flatMap((b) => (byBadge.get(b) ? [byBadge.get(b)!] : []));
   const addable = pool.filter((p) => !selected.includes(p.badge));
-  const recAddable = addable.filter((p) => recommended.includes(p.badge));
+  const recAddable = addable.filter((p) => recommended.includes(p.badge) && !p.nominatedBy);
+  // One nomination per position: recommended candidates already submitted cannot be submitted again.
+  const recSubmitted = pool.filter((p) => recommended.includes(p.badge) && p.nominatedBy);
   const [popup, setPopup] = useState<"range" | "max" | null>(null);
   const add = (b: string) => {
     if (!b || selected.includes(b)) return;
@@ -104,6 +109,7 @@ export function ProposalForm({
                   <div>
                     <p className="text-[1.3rem]">
                       <span className="text-brand">✓</span> {c.name} · {c.category} · {c.source}
+                      {c.awaitingSupervisor ? " · Belum direspons atasan" : ""}
                     </p>
                     <p className="ml-6 mt-1 text-[1.05rem] text-muted">Syarat wajib memenuhi</p>
                   </div>
@@ -150,21 +156,34 @@ export function ProposalForm({
                     Tambah
                   </button>
                 </div>
-              ) : recAddable.length > 0 ? (
-                <div className="flex flex-wrap gap-3">
-                  {recAddable.map((p) => (
-                    <button
-                      key={p.badge}
-                      type="button"
-                      onClick={() => add(p.badge)}
-                      className="rounded-lg border border-brand px-4 py-2 font-semibold text-brand hover:bg-brand-soft"
-                    >
-                      + {p.name}
-                    </button>
-                  ))}
-                </div>
               ) : (
-                <p className="text-[1.05rem] text-muted">Semua kandidat rekomendasi sudah dipilih.</p>
+                <>
+                  {recAddable.length > 0 ? (
+                    <div className="flex flex-wrap gap-3">
+                      {recAddable.map((p) => (
+                        <button
+                          key={p.badge}
+                          type="button"
+                          onClick={() => add(p.badge)}
+                          className="rounded-lg border border-brand px-4 py-2 font-semibold text-brand hover:bg-brand-soft"
+                        >
+                          + {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : recSubmitted.length === 0 ? (
+                    <p className="text-[1.05rem] text-muted">Semua kandidat rekomendasi sudah dipilih.</p>
+                  ) : null}
+                  {recSubmitted.length > 0 ? (
+                    <ul className="mt-3 space-y-1 text-[1.05rem] text-muted">
+                      {recSubmitted.map((p) => (
+                        <li key={p.badge}>
+                          {p.name} · Sudah diajukan {p.nominatedBy === "Atasan" ? "Atasan Langsung" : "Karyawan"}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
               )}
             </div>
           </Card>
@@ -198,7 +217,8 @@ export function ProposalForm({
             Usulan harus memuat {MIN_CANDIDATES}–{MAX_CANDIDATES} kandidat.
           </p>
           <p className="mt-auto pt-6 text-sm text-muted">
-            Lowongan {vacancyCode} · {closeText}
+            {vacancyCode ? `Lowongan ${vacancyCode} · ` : ""}
+            {closeText}
           </p>
         </Card>
       </div>

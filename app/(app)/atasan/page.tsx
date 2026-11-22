@@ -21,7 +21,7 @@ export default async function AtasanDasbor() {
       <div className="mb-6 grid gap-6 md:grid-cols-3">
         <Stat value={subs.length} label="Bawahan langsung" />
         <Stat value={undetermined} label="Kategori belum dapat ditentukan" tone="warn" note="Data nilai akhir atau asesmen belum lengkap" />
-        <Stat value={rows.filter((r) => r.stage !== "selesai").length} label="Pencalonan berjalan" />
+        <Stat value={rows.filter((r) => r.stage !== "selesai" && !r.rejected).length} label="Pencalonan berjalan" />
       </div>
       <Card>
         <ul className="divide-y divide-line text-[1.25rem]">

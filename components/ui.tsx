@@ -160,6 +160,7 @@ const BUTTON_VARIANT = {
   secondary: "border border-brand bg-white text-brand hover:bg-brand-soft",
   soft: "bg-brand-soft text-brand hover:bg-[#d3e7f7]",
   danger: "text-danger hover:underline",
+  disabled: "cursor-not-allowed bg-[#dde1e8] text-[#6b7785]",
 } as const;
 
 export function buttonClass(variant: keyof typeof BUTTON_VARIANT = "primary", extra?: string) {

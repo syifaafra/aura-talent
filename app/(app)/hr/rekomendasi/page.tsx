@@ -4,10 +4,10 @@ import Link from "next/link";
 import { ButtonLink, Card, DisabledButton, Notice, PageHeader, cn, inputClass } from "@/components/ui";
 import { db, fmtDateTime } from "@/lib/db";
 import {
+  categoryFromScore,
   getEmployee,
   getPosition,
   isCategoryDeterminable,
-  matchesFor,
   proposalForVacancy,
   repositoryEmployees,
 } from "@/lib/queries";
@@ -33,7 +33,7 @@ async function RekomendasiPage({
   const rows: RecRow[] = recs.flatMap((r) => {
     const e = getEmployee(r.badge);
     if (!e) return [];
-    const cat = matchesFor(e).find((m) => m.position.id === chosen.id)?.category ?? "Match";
+    const cat = categoryFromScore(r.score);
     return [
       {
         ...r,

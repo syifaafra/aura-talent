@@ -1,9 +1,8 @@
 import { Suspense } from "react";
 import { PageFallback } from "@/components/page-fallback";
 import Link from "next/link";
-import { vacancyText } from "@/components/match-list";
 import { Card, EmptyState, PageHeader, cn } from "@/components/ui";
-import { db } from "@/lib/db";
+import { db, fmtDate } from "@/lib/db";
 import { isCategoryDeterminable, matchesFor, nominationBlock } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
 
@@ -106,7 +105,10 @@ async function KecocokanBawahan({
                   <Card key={m.position.id}>
                     <h3 className="text-[1.5rem] font-semibold">{m.position.title}</h3>
                     <p className="mt-1 text-[1.2rem] text-ok">
-                      {m.category} · {vacancyText(m).replace("dibuka hingga", "aktif sampai").replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1")}
+                      {m.category} ·{" "}
+                      {m.position.open && m.position.openUntil
+                        ? `Lowongan aktif sampai ${fmtDate(m.position.openUntil)}`
+                        : "Belum ada lowongan aktif"}
                     </p>
                     {canNominate ? (
                       <Link

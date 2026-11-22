@@ -38,6 +38,8 @@ export function CompactSteps({ proposal }: { proposal: Proposal }) {
         </li>
         {visible.map((s) => {
           const st = stepState(proposal, s);
+          // Karyawan and Atasan never see the final result, only that the stage was processed.
+          const text = proposal.stage === "selesai" && s === "pihc" ? "Selesai diproses" : STATE_TEXT[st];
           return (
             <li
               key={s}
@@ -47,7 +49,7 @@ export function CompactSteps({ proposal }: { proposal: Proposal }) {
               )}
             >
               <span className="font-semibold text-brand">{STAGE_LABEL[s]}</span>
-              <span className={st === "current" ? "text-brand" : "text-muted"}>{STATE_TEXT[st]}</span>
+              <span className={st === "current" ? "text-brand" : "text-muted"}>{text}</span>
             </li>
           );
         })}
@@ -63,7 +65,8 @@ export function CompactSteps({ proposal }: { proposal: Proposal }) {
 
 /** Numbered timeline used by HR (W-35). */
 export function Timeline({ proposal }: { proposal: Proposal }) {
-  const logOf = (stage: Stage | "hr") => proposal.log.find((l) => l.stage === stage);
+  // Latest entry wins: a stage can run again after PIHC returns the proposal.
+  const logOf = (stage: Stage | "hr") => [...proposal.log].reverse().find((l) => l.stage === stage);
   const steps: Array<{ key: Stage | "hr"; label: string; task: string; st: StepState }> = [
     { key: "hr", label: "HR · Usulan dikirim", task: "", st: "done" },
     ...APPROVAL_STAGES.map((s) => ({
